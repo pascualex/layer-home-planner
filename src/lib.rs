@@ -12,7 +12,7 @@ use self::{
     ui::UiPlugin,
 };
 
-const VIEWPORT_SIZE: f32 = 20.0;
+const VIEWPORT_SIZE: f32 = 5.0;
 
 pub struct AppPlugin;
 
@@ -43,7 +43,7 @@ fn setup(mut commands: Commands) {
     });
     // circle
     let shape = shapes::RegularPolygon {
-        feature: RegularPolygonFeature::Radius(0.125),
+        feature: RegularPolygonFeature::Radius(0.05),
         sides: 20,
         ..default()
     };
@@ -60,8 +60,13 @@ fn setup(mut commands: Commands) {
 fn follow(mut query: Query<&mut Transform, With<Follow>>, cursor_position: Res<CursorPosition>) {
     for mut transform in &mut query {
         if let Some(cursor_position) = **cursor_position {
-            transform.translation.x = cursor_position.x;
-            transform.translation.y = cursor_position.y;
+            transform.translation.x = round(cursor_position.x, 1);
+            transform.translation.y = round(cursor_position.y, 1);
         }
     }
+}
+
+fn round(number: f32, decimals: u32) -> f32 {
+    let offset = 10_i32.pow(decimals) as f32;
+    (number * offset).round() / offset
 }
