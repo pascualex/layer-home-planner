@@ -2,11 +2,15 @@
 
 mod cursor;
 mod palette;
+mod ui;
 
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 use bevy_prototype_lyon::prelude::*;
 
-use self::cursor::{CursorPlugin, CursorPosition, CursorUpdate};
+use self::{
+    cursor::{CursorPlugin, CursorPosition, CursorUpdate},
+    ui::UiPlugin,
+};
 
 const VIEWPORT_SIZE: f32 = 20.0;
 
@@ -15,6 +19,7 @@ pub struct AppPlugin;
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(CursorPlugin)
+            .add_plugin(UiPlugin)
             .add_startup_system(setup)
             .add_system(follow.after(CursorUpdate));
     }
