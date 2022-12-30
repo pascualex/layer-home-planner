@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
-mod cursor;
+mod input;
 mod palette;
 mod ui;
 
@@ -8,7 +8,7 @@ use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::cam
 use bevy_prototype_lyon::prelude::*;
 
 use self::{
-    cursor::{CursorPlugin, CursorPosition, CursorUpdate},
+    input::{Cursor, InputPlugin, InputUpdate},
     ui::UiPlugin,
 };
 
@@ -18,10 +18,10 @@ pub struct AppPlugin;
 
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(CursorPlugin)
+        app.add_plugin(InputPlugin)
             .add_plugin(UiPlugin)
             .add_startup_system(setup)
-            .add_system(follow.after(CursorUpdate));
+            .add_system(follow.after(InputUpdate));
     }
 }
 
@@ -57,11 +57,12 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-fn follow(mut query: Query<&mut Transform, With<Follow>>, cursor_position: Res<CursorPosition>) {
+fn follow(mut query: Query<&mut Transform, With<Follow>>, cursor: Res<Cursor>) {
     for mut transform in &mut query {
-        if let Some(cursor_position) = **cursor_position {
-            transform.translation.x = round(cursor_position.x, 1);
-            transform.translation.y = round(cursor_position.y, 1);
+        if let Some(position) = cursor.position {
+            let decimals = if cursor.alt { 2 } else { 1 };
+            transform.translation.x = round(position.x, decimals);
+            transform.translation.y = round(position.y, decimals);
         }
     }
 }

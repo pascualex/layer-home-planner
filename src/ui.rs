@@ -63,5 +63,17 @@ fn update_inspector_text(
 ) {
     let transform = transform_query.single();
     let mut text = text_query.single_mut();
-    text.sections[0].value = format!("({}, {})", transform.translation.x, transform.translation.y);
+    text.sections[0].value = format!(
+        "({}, {})",
+        if transform.translation.x == -0.0 {
+            0.0
+        } else {
+            transform.translation.x
+        },
+        if transform.translation.y == -0.0 {
+            0.0
+        } else {
+            transform.translation.y
+        },
+    );
 }
