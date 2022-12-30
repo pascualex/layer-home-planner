@@ -9,7 +9,8 @@ impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Cursor>()
             .add_system(update_cursor_positon.label(InputUpdate))
-            .add_system(update_cursor_alt.label(InputUpdate));
+            .add_system(update_cursor_alt.label(InputUpdate))
+            .add_system(update_deselect.label(InputUpdate));
     }
 }
 
@@ -17,6 +18,7 @@ impl Plugin for InputPlugin {
 pub struct Cursor {
     pub position: Option<Vec2>,
     pub alt: bool,
+    pub deselect: bool,
 }
 
 fn update_cursor_positon(
@@ -42,4 +44,8 @@ fn update_cursor_positon(
 
 fn update_cursor_alt(input: Res<Input<KeyCode>>, mut cursor: ResMut<Cursor>) {
     cursor.alt = input.pressed(KeyCode::LAlt) || input.pressed(KeyCode::RAlt);
+}
+
+fn update_deselect(input: Res<Input<MouseButton>>, mut cursor: ResMut<Cursor>) {
+    cursor.deselect = input.just_pressed(MouseButton::Left);
 }

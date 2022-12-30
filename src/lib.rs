@@ -2,13 +2,15 @@
 
 mod input;
 mod palette;
+mod tool;
 mod ui;
 
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 use bevy_prototype_lyon::prelude::*;
 
 use self::{
-    input::{Cursor, InputPlugin, InputUpdate},
+    input::InputPlugin,
+    tool::{Selected, ToolPlugin},
     ui::UiPlugin,
 };
 
@@ -19,16 +21,16 @@ pub struct AppPlugin;
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(InputPlugin)
+            .add_plugin(ToolPlugin)
             .add_plugin(UiPlugin)
-            .add_startup_system(setup)
-            .add_system(follow.after(InputUpdate));
+            .add_startup_system(setup);
     }
 }
 
 #[derive(Component)]
-struct Follow;
+struct Point;
 
-fn setup(mut commands: Commands) {
+fn setup(mut selected: ResMut<Selected>, mut commands: Commands) {
     // camera
     commands.spawn(Camera2dBundle {
         camera_2d: Camera2d {
@@ -47,27 +49,15 @@ fn setup(mut commands: Commands) {
         sides: 20,
         ..default()
     };
-    commands.spawn((
-        GeometryBuilder::build_as(
-            &shape,
-            DrawMode::Fill(FillMode::color(palette::LIGHT_WHITE)),
-            Transform::default(),
-        ),
-        Follow,
-    ));
-}
-
-fn follow(mut query: Query<&mut Transform, With<Follow>>, cursor: Res<Cursor>) {
-    for mut transform in &mut query {
-        if let Some(position) = cursor.position {
-            let decimals = if cursor.alt { 2 } else { 1 };
-            transform.translation.x = round(position.x, decimals);
-            transform.translation.y = round(position.y, decimals);
-        }
-    }
-}
-
-fn round(number: f32, decimals: u32) -> f32 {
-    let offset = 10_i32.pow(decimals) as f32;
-    (number * offset).round() / offset
+    let entity = commands
+        .spawn((
+            GeometryBuilder::build_as(
+                &shape,
+                DrawMode::Fill(FillMode::color(palette::LIGHT_WHITE)),
+                Transform::default(),
+            ),
+            Point,
+        ))
+        .id();
+    selected.entity = Some(entity);
 }

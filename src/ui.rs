@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{palette, Follow};
+use crate::{palette, tool::Selected, Point};
 
 pub struct UiPlugin;
 
@@ -58,22 +58,27 @@ fn spawn_inspector_panel(assets: Res<UiAssets>, mut commands: Commands) {
 }
 
 fn update_inspector_text(
-    transform_query: Query<&Transform, With<Follow>>,
+    selected: Res<Selected>,
+    transform_query: Query<&Transform, With<Point>>,
     mut text_query: Query<&mut Text, With<InspectorText>>,
 ) {
-    let transform = transform_query.single();
     let mut text = text_query.single_mut();
-    text.sections[0].value = format!(
-        "({}, {})",
-        if transform.translation.x == -0.0 {
-            0.0
-        } else {
-            transform.translation.x
-        },
-        if transform.translation.y == -0.0 {
-            0.0
-        } else {
-            transform.translation.y
-        },
-    );
+    if let Some(entity) = selected.entity {
+        let transform = transform_query.get(entity).unwrap();
+        text.sections[0].value = format!(
+            "({}, {})",
+            if transform.translation.x == -0.0 {
+                0.0
+            } else {
+                transform.translation.x
+            },
+            if transform.translation.y == -0.0 {
+                0.0
+            } else {
+                transform.translation.y
+            },
+        );
+    } else {
+        text.sections[0].value = "Nothing selected".to_string();
+    }
 }
