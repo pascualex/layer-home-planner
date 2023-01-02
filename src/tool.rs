@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     input::{Cursor, InputUpdate},
-    Point,
+    point::{Point, UpdateTransform},
 };
 
 pub struct ToolPlugin;
@@ -10,7 +10,11 @@ pub struct ToolPlugin;
 impl Plugin for ToolPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Selected>()
-            .add_system(move_selected_point.after(InputUpdate))
+            .add_system(
+                move_selected_point
+                    .after(InputUpdate)
+                    .before(UpdateTransform),
+            )
             .add_system(deselect.after(InputUpdate));
     }
 }
@@ -20,19 +24,15 @@ pub struct Selected {
     pub entity: Option<Entity>,
 }
 
-fn move_selected_point(
-    cursor: Res<Cursor>,
-    selected: Res<Selected>,
-    mut query: Query<&mut Transform, With<Point>>,
-) {
+fn move_selected_point(cursor: Res<Cursor>, selected: Res<Selected>, mut query: Query<&mut Point>) {
     let Some(entity) = selected.entity else {
         return;
     };
-    let mut transform = query.get_mut(entity).unwrap();
+    let mut point = query.get_mut(entity).unwrap();
     if let Some(position) = cursor.position {
         let decimals = if cursor.alt { 2 } else { 1 };
-        transform.translation.x = round(position.x, decimals);
-        transform.translation.y = round(position.y, decimals);
+        point.position.x = round(position.x, decimals);
+        point.position.y = round(position.y, decimals);
     }
 }
 

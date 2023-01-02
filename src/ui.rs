@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{palette, tool::Selected, Point};
+use crate::{palette, point::Point, tool::Selected};
 
 pub struct UiPlugin;
 
@@ -59,23 +59,23 @@ fn spawn_inspector_panel(assets: Res<UiAssets>, mut commands: Commands) {
 
 fn update_inspector_text(
     selected: Res<Selected>,
-    transform_query: Query<&Transform, With<Point>>,
+    point_query: Query<&Point>,
     mut text_query: Query<&mut Text, With<InspectorText>>,
 ) {
     let mut text = text_query.single_mut();
     if let Some(entity) = selected.entity {
-        let transform = transform_query.get(entity).unwrap();
+        let point = point_query.get(entity).unwrap();
         text.sections[0].value = format!(
             "({}, {})",
-            if transform.translation.x == -0.0 {
+            if point.position.x == -0.0 {
                 0.0
             } else {
-                transform.translation.x
+                point.position.x
             },
-            if transform.translation.y == -0.0 {
+            if point.position.y == -0.0 {
                 0.0
             } else {
-                transform.translation.y
+                point.position.y
             },
         );
     } else {
