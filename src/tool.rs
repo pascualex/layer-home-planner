@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     input::{Cursor, InputUpdate},
-    point::{Point, UpdateTransform},
+    point::{Point, PointUpdate, SpawnPointEvent},
 };
 
 pub struct ToolPlugin;
@@ -10,18 +10,31 @@ pub struct ToolPlugin;
 impl Plugin for ToolPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Selected>()
-            .add_system(
-                move_selected_point
-                    .after(InputUpdate)
-                    .before(UpdateTransform),
-            )
-            .add_system(deselect.after(InputUpdate));
+            .add_system(move_selected_point.after(InputUpdate).before(PointUpdate))
+            .add_system(update_selection.after(InputUpdate));
     }
 }
 
 #[derive(Resource, Default)]
 pub struct Selected {
     pub entity: Option<Entity>,
+}
+
+fn update_selection(
+    cursor: Res<Cursor>,
+    mut events: EventWriter<SpawnPointEvent>,
+    mut selected: ResMut<Selected>,
+) {
+    if cursor.primary {
+        if selected.entity.is_none() {
+            let Some(position) = cursor.position else {
+                return;
+            };
+            events.send(SpawnPointEvent::new(position));
+        } else {
+            selected.entity = None;
+        }
+    }
 }
 
 fn move_selected_point(cursor: Res<Cursor>, selected: Res<Selected>, mut query: Query<&mut Point>) {
@@ -39,10 +52,4 @@ fn move_selected_point(cursor: Res<Cursor>, selected: Res<Selected>, mut query: 
 fn round(number: f32, decimals: u32) -> f32 {
     let offset = 10_i32.pow(decimals) as f32;
     (number * offset).round() / offset
-}
-
-fn deselect(cursor: Res<Cursor>, mut selected: ResMut<Selected>) {
-    if cursor.deselect {
-        selected.entity = None;
-    }
 }

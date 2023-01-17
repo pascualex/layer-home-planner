@@ -1,15 +1,28 @@
 use bevy::prelude::*;
+use bevy_prototype_lyon::prelude::*;
 
-use crate::ZOOM;
+use crate::{palette, tool::Selected, ZOOM};
 
 #[derive(SystemLabel)]
-pub struct UpdateTransform;
+pub struct PointUpdate;
 
 pub struct PointPlugin;
 
 impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(update_points_transform.label(UpdateTransform));
+        app.add_event::<SpawnPointEvent>()
+            .add_system(spawn_points.label(PointUpdate))
+            .add_system(update_points_transform.label(PointUpdate));
+    }
+}
+
+pub struct SpawnPointEvent {
+    pub position: Vec2,
+}
+
+impl SpawnPointEvent {
+    pub fn new(position: Vec2) -> Self {
+        Self { position }
     }
 }
 
@@ -21,6 +34,34 @@ pub struct Point {
 impl Point {
     pub fn new(position: Vec2) -> Self {
         Self { position }
+    }
+}
+
+fn spawn_points(
+    mut events: EventReader<SpawnPointEvent>,
+    mut selected: ResMut<Selected>,
+    mut commands: Commands,
+) {
+    for event in events.iter() {
+        let shape = shapes::Circle {
+            radius: 5.0,
+            ..default()
+        };
+        let entity = commands
+            .spawn((
+                GeometryBuilder::build_as(
+                    &shape,
+                    DrawMode::Fill(FillMode::color(palette::LIGHT_WHITE)),
+                    Transform::from_translation(Vec3::new(
+                        event.position.x * ZOOM,
+                        event.position.y * ZOOM,
+                        0.0,
+                    )),
+                ),
+                Point::new(event.position),
+            ))
+            .id();
+        selected.entity = Some(entity);
     }
 }
 

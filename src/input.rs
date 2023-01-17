@@ -11,16 +11,16 @@ impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Cursor>()
             .add_system(update_cursor_positon.label(InputUpdate))
-            .add_system(update_cursor_alt.label(InputUpdate))
-            .add_system(update_deselect.label(InputUpdate));
+            .add_system(update_cursor_primary.label(InputUpdate))
+            .add_system(update_cursor_alt.label(InputUpdate));
     }
 }
 
 #[derive(Resource, Default)]
 pub struct Cursor {
     pub position: Option<Vec2>,
+    pub primary: bool,
     pub alt: bool,
-    pub deselect: bool,
 }
 
 fn update_cursor_positon(windows: Res<Windows>, query: Query<&Camera>, mut cursor: ResMut<Cursor>) {
@@ -35,10 +35,10 @@ fn update_cursor_positon(windows: Res<Windows>, query: Query<&Camera>, mut curso
     });
 }
 
-fn update_cursor_alt(input: Res<Input<KeyCode>>, mut cursor: ResMut<Cursor>) {
-    cursor.alt = input.pressed(KeyCode::LAlt) || input.pressed(KeyCode::RAlt);
+fn update_cursor_primary(input: Res<Input<MouseButton>>, mut cursor: ResMut<Cursor>) {
+    cursor.primary = input.just_pressed(MouseButton::Left);
 }
 
-fn update_deselect(input: Res<Input<MouseButton>>, mut cursor: ResMut<Cursor>) {
-    cursor.deselect = input.just_pressed(MouseButton::Left);
+fn update_cursor_alt(input: Res<Input<KeyCode>>, mut cursor: ResMut<Cursor>) {
+    cursor.alt = input.pressed(KeyCode::LAlt) || input.pressed(KeyCode::RAlt);
 }
