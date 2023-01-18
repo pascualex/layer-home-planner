@@ -6,9 +6,11 @@ mod point;
 mod tool;
 mod ui;
 
-use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*};
+use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 
 use self::{input::InputPlugin, point::PointPlugin, tool::ToolPlugin, ui::UiPlugin};
+
+const VIEWPORT_SIZE: f32 = 10.0;
 
 pub struct AppPlugin;
 
@@ -23,10 +25,13 @@ impl Plugin for AppPlugin {
 }
 
 fn setup(mut commands: Commands) {
-    // camera
     commands.spawn(Camera2dBundle {
         camera_2d: Camera2d {
             clear_color: ClearColorConfig::Custom(palette::DARK_BLACK),
+        },
+        projection: OrthographicProjection {
+            scaling_mode: ScalingMode::FixedVertical(VIEWPORT_SIZE),
+            ..default()
         },
         transform: Transform::from_xyz(0.0, 0.0, 99.9),
         ..default()
