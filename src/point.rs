@@ -3,6 +3,8 @@ use bevy_prototype_lyon::prelude::*;
 
 use crate::{palette, tool::Selected, ZOOM};
 
+pub const POINT_RADIUS: f32 = 5.0;
+
 #[derive(SystemLabel)]
 pub struct PointUpdate;
 
@@ -44,7 +46,7 @@ fn spawn_points(
 ) {
     for event in events.iter() {
         let shape = shapes::Circle {
-            radius: 5.0,
+            radius: POINT_RADIUS,
             ..default()
         };
         let entity = commands

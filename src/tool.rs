@@ -2,7 +2,8 @@ use bevy::prelude::*;
 
 use crate::{
     input::{Cursor, InputUpdate},
-    point::{Point, PointUpdate, SpawnPointEvent},
+    point::{Point, PointUpdate, SpawnPointEvent, POINT_RADIUS},
+    ZOOM,
 };
 
 pub struct ToolPlugin;
@@ -11,7 +12,7 @@ impl Plugin for ToolPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Selected>()
             .add_system(move_selected_point.after(InputUpdate).before(PointUpdate))
-            .add_system(update_selection.after(InputUpdate));
+            .add_system(update_selection.after(InputUpdate).before(PointUpdate));
     }
 }
 
@@ -22,6 +23,7 @@ pub struct Selected {
 
 fn update_selection(
     cursor: Res<Cursor>,
+    query: Query<(Entity, &Point)>,
     mut events: EventWriter<SpawnPointEvent>,
     mut selected: ResMut<Selected>,
 ) {
@@ -30,11 +32,24 @@ fn update_selection(
             let Some(position) = cursor.position else {
                 return;
             };
-            events.send(SpawnPointEvent::new(position));
+            if let Some(entity) = find_point_at(position, &query) {
+                selected.entity = Some(entity);
+            } else {
+                events.send(SpawnPointEvent::new(position));
+            }
         } else {
             selected.entity = None;
         }
     }
+}
+
+fn find_point_at(position: Vec2, query: &Query<(Entity, &Point)>) -> Option<Entity> {
+    let radius = POINT_RADIUS / ZOOM;
+    let radius_squared = radius * radius;
+    query
+        .iter()
+        .find(|(_, point)| Vec2::distance_squared(point.position, position) <= radius_squared)
+        .map(|(entity, _)| entity)
 }
 
 fn move_selected_point(cursor: Res<Cursor>, selected: Res<Selected>, mut query: Query<&mut Point>) {
