@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use crate::{
     input::{Cursor, InputUpdate},
     point::{Point, PointUpdate, SpawnPointEvent, POINT_RADIUS},
-    ZOOM,
 };
 
 pub struct ToolPlugin;
@@ -23,7 +22,7 @@ pub struct Selected {
 
 fn update_selection(
     cursor: Res<Cursor>,
-    query: Query<(Entity, &Point)>,
+    query: Query<(Entity, &Transform), With<Point>>,
     mut events: EventWriter<SpawnPointEvent>,
     mut selected: ResMut<Selected>,
 ) {
@@ -43,24 +42,32 @@ fn update_selection(
     }
 }
 
-fn find_point_at(position: Vec2, query: &Query<(Entity, &Point)>) -> Option<Entity> {
-    let radius = POINT_RADIUS / ZOOM;
-    let radius_squared = radius * radius;
+fn find_point_at(
+    position: Vec2,
+    query: &Query<(Entity, &Transform), With<Point>>,
+) -> Option<Entity> {
+    let radius_squared = POINT_RADIUS * POINT_RADIUS;
     query
         .iter()
-        .find(|(_, point)| Vec2::distance_squared(point.position, position) <= radius_squared)
+        .find(|(_, transform)| {
+            Vec2::distance_squared(transform.translation.truncate(), position) <= radius_squared
+        })
         .map(|(entity, _)| entity)
 }
 
-fn move_selected_point(cursor: Res<Cursor>, selected: Res<Selected>, mut query: Query<&mut Point>) {
+fn move_selected_point(
+    cursor: Res<Cursor>,
+    selected: Res<Selected>,
+    mut query: Query<&mut Transform, With<Point>>,
+) {
     let Some(entity) = selected.entity else {
         return;
     };
-    let mut point = query.get_mut(entity).unwrap();
+    let mut transform = query.get_mut(entity).unwrap();
     if let Some(position) = cursor.position {
         let decimals = if cursor.alt { 2 } else { 1 };
-        point.position.x = round(position.x, decimals);
-        point.position.y = round(position.y, decimals);
+        transform.translation.x = round(position.x, decimals);
+        transform.translation.y = round(position.y, decimals);
     }
 }
 

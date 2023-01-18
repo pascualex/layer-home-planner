@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{palette, tool::Selected, ZOOM};
+use crate::{palette, tool::Selected};
 
 pub const POINT_RADIUS: f32 = 5.0;
 
@@ -13,8 +13,7 @@ pub struct PointPlugin;
 impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnPointEvent>()
-            .add_system(spawn_points.label(PointUpdate))
-            .add_system(update_points_transform.label(PointUpdate));
+            .add_system(spawn_points.label(PointUpdate));
     }
 }
 
@@ -29,15 +28,7 @@ impl SpawnPointEvent {
 }
 
 #[derive(Component)]
-pub struct Point {
-    pub position: Vec2,
-}
-
-impl Point {
-    pub fn new(position: Vec2) -> Self {
-        Self { position }
-    }
-}
+pub struct Point;
 
 fn spawn_points(
     mut events: EventReader<SpawnPointEvent>,
@@ -54,22 +45,11 @@ fn spawn_points(
                 GeometryBuilder::build_as(
                     &shape,
                     DrawMode::Fill(FillMode::color(palette::LIGHT_WHITE)),
-                    Transform::from_translation(Vec3::new(
-                        event.position.x * ZOOM,
-                        event.position.y * ZOOM,
-                        0.0,
-                    )),
+                    Transform::from_translation(event.position.extend(0.0)),
                 ),
-                Point::new(event.position),
+                Point,
             ))
             .id();
         selected.entity = Some(entity);
-    }
-}
-
-fn update_points_transform(mut query: Query<(&mut Transform, &Point), Changed<Point>>) {
-    for (mut transform, point) in &mut query {
-        transform.translation.x = point.position.x * ZOOM;
-        transform.translation.y = point.position.y * ZOOM;
     }
 }

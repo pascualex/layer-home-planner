@@ -10,8 +10,6 @@ use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*};
 
 use self::{input::InputPlugin, point::PointPlugin, tool::ToolPlugin, ui::UiPlugin};
 
-pub const ZOOM: f32 = 100.0;
-
 pub struct AppPlugin;
 
 impl Plugin for AppPlugin {

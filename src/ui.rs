@@ -59,23 +59,23 @@ fn spawn_inspector_panel(assets: Res<UiAssets>, mut commands: Commands) {
 
 fn update_inspector_text(
     selected: Res<Selected>,
-    point_query: Query<&Point>,
+    point_query: Query<&Transform, With<Point>>,
     mut text_query: Query<&mut Text, With<InspectorText>>,
 ) {
     let mut text = text_query.single_mut();
     if let Some(entity) = selected.entity {
-        let point = point_query.get(entity).unwrap();
+        let transform = point_query.get(entity).unwrap();
         text.sections[0].value = format!(
             "({}, {})",
-            if point.position.x == -0.0 {
+            if transform.translation.x == -0.0 {
                 0.0
             } else {
-                point.position.x
+                transform.translation.x
             },
-            if point.position.y == -0.0 {
+            if transform.translation.y == -0.0 {
                 0.0
             } else {
-                point.position.y
+                transform.translation.y
             },
         );
     } else {

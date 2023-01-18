@@ -1,7 +1,5 @@
 use bevy::{prelude::*, render::camera::RenderTarget};
 
-use crate::ZOOM;
-
 #[derive(SystemLabel)]
 pub struct InputUpdate;
 
@@ -23,16 +21,25 @@ pub struct Cursor {
     pub alt: bool,
 }
 
-fn update_cursor_positon(windows: Res<Windows>, query: Query<&Camera>, mut cursor: ResMut<Cursor>) {
-    let camera = query.single();
+fn update_cursor_positon(
+    windows: Res<Windows>,
+    query: Query<(&GlobalTransform, &Camera)>,
+    mut cursor: ResMut<Cursor>,
+) {
+    let (transform, camera) = query.single();
     let window = match camera.target {
         RenderTarget::Window(id) => windows.get(id).unwrap(),
         RenderTarget::Image(_) => panic!(),
     };
-    cursor.position = window.cursor_position().map(|screen_position| {
+    cursor.position = if let Some(screen_position) = window.cursor_position() {
         let size = Vec2::new(window.width() as f32, window.height() as f32);
-        (screen_position - size / 2.0) / ZOOM
-    });
+        let ndc = (screen_position / size) * 2.0 - Vec2::ONE;
+        camera
+            .ndc_to_world(transform, ndc.extend(-1.0))
+            .map(|p| p.truncate())
+    } else {
+        None
+    };
 }
 
 fn update_cursor_primary(input: Res<Input<MouseButton>>, mut cursor: ResMut<Cursor>) {
