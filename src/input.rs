@@ -32,8 +32,8 @@ fn update_cursor_positon(
         RenderTarget::Image(_) => panic!(),
     };
     cursor.position = if let Some(screen_position) = window.cursor_position() {
-        let size = Vec2::new(window.width() as f32, window.height() as f32);
-        let ndc = (screen_position / size) * 2.0 - Vec2::ONE;
+        let screen_size = Vec2::new(window.width() as f32, window.height() as f32);
+        let ndc = (screen_position / screen_size) * 2.0 - Vec2::ONE;
         camera
             .ndc_to_world(transform, ndc.extend(-1.0))
             .map(|p| p.truncate())
