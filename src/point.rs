@@ -1,8 +1,9 @@
 use bevy::{prelude::*, render::camera::RenderTarget};
+use bevy_prototype_debug_lines::DebugShapes;
 
 use crate::{palette, tool::Selected};
 
-pub const POINT_RADIUS: f32 = 8.0;
+pub const POINT_RADIUS: f32 = 0.1;
 
 #[derive(SystemLabel)]
 pub struct PointUpdate;
@@ -13,7 +14,8 @@ impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnPointEvent>()
             .add_system(spawn_points.label(PointUpdate))
-            .add_system(track_points_in_ui.label(PointUpdate));
+            .add_system(track_points_in_ui.label(PointUpdate))
+            .add_system(draw_points_to_gizmos.label(PointUpdate));
     }
 }
 
@@ -106,4 +108,12 @@ fn track_points_in_ui(
         style.position.left = Val::Px(screen_position.x - (POINT_RADIUS / 2.0));
         style.position.bottom = Val::Px(screen_position.y - (POINT_RADIUS / 2.0));
     }
+}
+
+fn draw_points_to_gizmos(mut shapes: ResMut<DebugShapes>) {
+    shapes
+        .rect()
+        .position(Vec3::ZERO)
+        .size(Vec2::splat(POINT_RADIUS) * 2.0)
+        .color(palette::LIGHT_WHITE);
 }

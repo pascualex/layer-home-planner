@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_prototype_debug_lines::DebugLinesPlugin;
 use layer_home_planner::AppPlugin;
 
 fn main() {
@@ -15,6 +16,7 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
+        .add_plugin(DebugLinesPlugin::default())
         .add_plugin(AppPlugin)
         .run();
 }
