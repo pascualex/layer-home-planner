@@ -66,7 +66,7 @@ fn update_inspector_text(
     if let Some(entity) = selected.entity {
         let transform = point_query.get(entity).unwrap();
         text.sections[0].value = format!(
-            "({}, {})",
+            "({:.2}, {:.2})",
             if transform.translation.x == -0.0 {
                 0.0
             } else {
