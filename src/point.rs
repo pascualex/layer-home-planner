@@ -82,7 +82,8 @@ fn spawn_points(
 }
 
 fn track_points_in_ui(
-    point_query: Query<(&Transform, &Point), Changed<Transform>>,
+    // TODO: update only on changed transform or window or camera movement
+    point_query: Query<(&Transform, &Point)>,
     camera_query: Query<(&GlobalTransform, &Camera)>,
     windows: Res<Windows>,
     mut ui_point_query: Query<&mut Style, With<UiPoint>>,
