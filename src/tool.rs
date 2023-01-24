@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     input::{Cursor, InputUpdate},
-    point::{Point, PointUpdate, SpawnPointEvent, POINT_RADIUS},
+    point::{Point, PointUpdate, SpawnPointEvent, UiPoint},
 };
 
 pub struct ToolPlugin;
@@ -22,7 +22,7 @@ pub struct Selected {
 
 fn update_selection(
     cursor: Res<Cursor>,
-    query: Query<(Entity, &Transform), With<Point>>,
+    query: Query<(&Interaction, &UiPoint)>,
     mut events: EventWriter<SpawnPointEvent>,
     mut selected: ResMut<Selected>,
 ) {
@@ -31,28 +31,17 @@ fn update_selection(
             let Some(position) = cursor.position else {
                 return;
             };
-            if let Some(entity) = find_point_at(position, &query) {
-                selected.entity = Some(entity);
-            } else {
-                events.send(SpawnPointEvent::new(position));
+            for (interaction, ui_point) in &query {
+                if !matches!(interaction, Interaction::None) {
+                    selected.entity = Some(ui_point.point);
+                    return;
+                }
             }
+            events.send(SpawnPointEvent::new(position));
         } else {
             selected.entity = None;
         }
     }
-}
-
-fn find_point_at(
-    position: Vec2,
-    query: &Query<(Entity, &Transform), With<Point>>,
-) -> Option<Entity> {
-    let radius_squared = POINT_RADIUS * POINT_RADIUS;
-    query
-        .iter()
-        .find(|(_, transform)| {
-            Vec2::distance_squared(transform.translation.truncate(), position) <= radius_squared
-        })
-        .map(|(entity, _)| entity)
 }
 
 fn move_selected_point(
