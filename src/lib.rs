@@ -14,6 +14,7 @@ use self::{
 };
 
 const VIEWPORT_SIZE: f32 = 10.0;
+const BASE_PRIORITY: f32 = 0.0;
 
 pub struct AppPlugin;
 

@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{palette, point::Point};
+use crate::{palette, point::Point, BASE_PRIORITY};
+
+pub const LINE_WIDTH: f32 = 0.025;
+pub const LINE_PRIORITY: f32 = BASE_PRIORITY + 1.0;
 
 pub struct LinePlugin;
 
@@ -57,8 +60,8 @@ fn spawn_lines(
         commands.spawn((
             GeometryBuilder::build_as(
                 &shape,
-                DrawMode::Stroke(StrokeMode::color(palette::DARK_WHITE)),
-                Transform::from_translation(position.extend(0.0)),
+                DrawMode::Stroke(StrokeMode::new(palette::DARK_WHITE, LINE_WIDTH)),
+                Transform::from_translation(position.extend(LINE_PRIORITY)),
             ),
             Line::new(event.point_a, event.point_b),
         ));

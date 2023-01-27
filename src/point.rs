@@ -3,9 +3,10 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::palette;
+use crate::{line::LINE_PRIORITY, palette};
 
 pub const POINT_RADIUS: f32 = 0.1;
+pub const POINT_PRIORITY: f32 = LINE_PRIORITY + 1.0;
 
 #[derive(SystemLabel)]
 pub struct PointSpawn;
@@ -44,7 +45,7 @@ fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands
                 &shape,
                 DrawMode::Fill(FillMode::color(palette::LIGHT_WHITE)),
                 Transform {
-                    translation: event.position.extend(0.0),
+                    translation: event.position.extend(POINT_PRIORITY),
                     rotation: Quat::from_rotation_z(PI / 4.0),
                     ..default()
                 },
