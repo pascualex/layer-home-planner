@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     input::{Cursor, InputUpdate},
-    point::{Point, PointUpdate, SpawnPointEvent, POINT_RADIUS},
+    point::{Point, SpawnPointEvent, POINT_RADIUS},
 };
 
 pub struct ToolPlugin;
@@ -10,8 +10,8 @@ pub struct ToolPlugin;
 impl Plugin for ToolPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Selected>()
-            .add_system(move_selected_point.after(InputUpdate).before(PointUpdate))
-            .add_system(update_selection.after(InputUpdate).before(PointUpdate));
+            .add_system(move_selected_point.after(InputUpdate))
+            .add_system(update_selection.after(InputUpdate));
     }
 }
 
