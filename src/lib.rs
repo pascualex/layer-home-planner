@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 mod input;
+mod line;
 mod palette;
 mod point;
 mod tool;
@@ -8,7 +9,9 @@ mod ui;
 
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 
-use self::{input::InputPlugin, point::PointPlugin, tool::ToolPlugin, ui::UiPlugin};
+use self::{
+    input::InputPlugin, line::LinePlugin, point::PointPlugin, tool::ToolPlugin, ui::UiPlugin,
+};
 
 const VIEWPORT_SIZE: f32 = 10.0;
 
@@ -17,6 +20,7 @@ pub struct AppPlugin;
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(InputPlugin)
+            .add_plugin(LinePlugin)
             .add_plugin(PointPlugin)
             .add_plugin(ToolPlugin)
             .add_plugin(UiPlugin)
