@@ -7,11 +7,15 @@ use crate::{palette, tool::Selected};
 
 pub const POINT_RADIUS: f32 = 0.1;
 
+#[derive(SystemLabel)]
+pub struct PointUpdate;
+
 pub struct PointPlugin;
 
 impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SpawnPointEvent>().add_system(spawn_points);
+        app.add_event::<SpawnPointEvent>()
+            .add_system(spawn_points.label(PointUpdate));
     }
 }
 
