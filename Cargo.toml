@@ -11,4 +11,4 @@ opt-level = 3
 
 [dependencies]
 bevy = "0.9"
-bevy_prototype_debug_lines = { git = "https://github.com/Toqozz/bevy_debug_lines", commit = "30b1b6251e92347a0b3e9a9a7b16ddb4e9a9838b" }
+bevy_prototype_lyon = "0.7"
