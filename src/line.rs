@@ -89,10 +89,11 @@ fn spawn_lines(
 }
 
 fn update_lines(
-    point_query: Query<(Entity, &Transform, &Point), (With<Point>, Changed<Transform>)>,
+    changed_point_query: Query<(Entity, &Transform, &Point), Changed<Transform>>,
+    other_point_query: Query<&Transform, With<Point>>,
     mut line_query: Query<(&mut Transform, &mut Path, &Line), Without<Point>>,
 ) {
-    for (point_a_entity, transform_a, point_a) in &point_query {
+    for (point_a_entity, transform_a, point_a) in &changed_point_query {
         for &line_entity in &point_a.lines {
             let Ok((mut line_transform, mut path, line)) = line_query.get_mut(line_entity) else {
                 continue;
@@ -100,7 +101,7 @@ fn update_lines(
             let Some(point_b_entity) = line.other(point_a_entity) else {
                 continue;
             };
-            let Ok((_, transform_b, _)) = point_query.get(point_b_entity) else {
+            let Ok(transform_b) = other_point_query.get(point_b_entity) else {
                 continue;
             };
             let (position, local_a, local_b) = calculate_line(
