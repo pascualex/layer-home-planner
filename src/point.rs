@@ -16,7 +16,9 @@ pub struct PointPlugin;
 impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnPointWithEntityEvent>()
-            .add_system(spawn_points.label(PointSpawn));
+            .add_event::<ConnectPointEvent>()
+            .add_system(spawn_points.label(PointSpawn))
+            .add_system(connect_points);
     }
 }
 
@@ -31,8 +33,27 @@ impl SpawnPointWithEntityEvent {
     }
 }
 
+pub struct ConnectPointEvent {
+    pub point: Entity,
+    pub line: Entity,
+}
+
+impl ConnectPointEvent {
+    pub fn new(point: Entity, line: Entity) -> Self {
+        Self { point, line }
+    }
+}
+
 #[derive(Component)]
-pub struct Point;
+pub struct Point {
+    pub lines: Vec<Entity>,
+}
+
+impl Point {
+    pub fn new() -> Self {
+        Self { lines: Vec::new() }
+    }
+}
 
 fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands: Commands) {
     for event in events.iter() {
@@ -50,7 +71,16 @@ fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands
                     ..default()
                 },
             ),
-            Point,
+            Point::new(),
         ));
+    }
+}
+
+fn connect_points(mut events: EventReader<ConnectPointEvent>, mut query: Query<&mut Point>) {
+    for event in events.iter() {
+        let Ok(mut point) = query.get_mut(event.point) else {
+            return;
+        };
+        point.lines.push(event.line);
     }
 }
