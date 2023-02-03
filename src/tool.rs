@@ -3,7 +3,10 @@ use bevy::prelude::*;
 use crate::{
     input::{Cursor, InputUpdate},
     line::SpawnLineEvent,
-    point::{Point, PointSpawn, SpawnPointWithEntityEvent, POINT_RADIUS},
+    point::{
+        HighlightLevel, HighlightPointEvent, Point, PointSpawn, SpawnPointWithEntityEvent,
+        POINT_RADIUS,
+    },
 };
 
 pub struct ToolPlugin;
@@ -11,8 +14,10 @@ pub struct ToolPlugin;
 impl Plugin for ToolPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Selected>()
-            .add_system(update_selection.after(InputUpdate).before(PointSpawn))
-            .add_system(move_selection.after(update_selection));
+            .init_resource::<Hovered>()
+            .add_system(update_hovered.after(InputUpdate))
+            .add_system(update_selected.after(update_hovered).before(PointSpawn))
+            .add_system(move_selection.after(update_selected));
     }
 }
 
@@ -21,20 +26,26 @@ pub struct Selected {
     pub entity: Option<Entity>,
 }
 
-fn update_selection(
+#[derive(Resource, Default)]
+pub struct Hovered {
+    pub entity: Option<Entity>,
+}
+
+fn update_selected(
     cursor: Res<Cursor>,
-    query: Query<(Entity, &Transform), With<Point>>,
+    hovered: Res<Hovered>,
     mut point_events: EventWriter<SpawnPointWithEntityEvent>,
     mut line_events: EventWriter<SpawnLineEvent>,
     mut selected: ResMut<Selected>,
+    mut highlight_events: EventWriter<HighlightPointEvent>,
     mut commands: Commands,
 ) {
-    if cursor.primary {
+    let Some(position) = cursor.position else {
+        return;
+    };
+    let new_entity = if cursor.primary {
         if selected.entity.is_none() {
-            let Some(position) = cursor.position else {
-                return;
-            };
-            let entity = match find_point_at(position, &query) {
+            let entity = match hovered.entity {
                 Some(entity) => entity,
                 None => {
                     let entity = commands.spawn_empty().id();
@@ -42,35 +53,72 @@ fn update_selection(
                     entity
                 }
             };
-            selected.entity = Some(entity);
+            Some(entity)
         } else {
-            selected.entity = None;
+            None
         }
     } else if cursor.secondary && selected.entity.is_none() {
         let Some(position) = cursor.position else {
             return;
         };
-        let Some(point_a_entity) = find_point_at(position, &query) else {
+        let Some(point_a_entity) = hovered.entity else {
             return;
         };
         let point_b_entity = commands.spawn_empty().id();
         point_events.send(SpawnPointWithEntityEvent::new(point_b_entity, position));
         line_events.send(SpawnLineEvent::new(point_a_entity, point_b_entity));
-        selected.entity = Some(point_b_entity);
+        Some(point_b_entity)
+    } else {
+        return;
+    };
+    if new_entity != selected.entity {
+        if let Some(old_entity) = selected.entity {
+            highlight_events.send(HighlightPointEvent::new(old_entity, HighlightLevel::Normal));
+        }
+        selected.entity = new_entity;
+        if let Some(new_entity) = selected.entity {
+            highlight_events.send(HighlightPointEvent::new(
+                new_entity,
+                HighlightLevel::Selected,
+            ));
+        }
     }
 }
 
-fn find_point_at(
-    position: Vec2,
-    query: &Query<(Entity, &Transform), With<Point>>,
-) -> Option<Entity> {
+fn update_hovered(
+    cursor: Res<Cursor>,
+    query: Query<(Entity, &Transform), With<Point>>,
+    selected: Res<Selected>,
+    mut hovered: ResMut<Hovered>,
+    mut highlight_events: EventWriter<HighlightPointEvent>,
+) {
+    let Some(cursor_position) = cursor.position else {
+        return;
+    };
     let radius_squared = POINT_RADIUS * POINT_RADIUS;
-    query
+    let new_entity = query
         .iter()
-        .find(|(_, transform)| {
-            Vec2::distance_squared(transform.translation.truncate(), position) <= radius_squared
+        .find(|(entity, transform)| {
+            let position = transform.translation.truncate();
+            Vec2::distance_squared(position, cursor_position) <= radius_squared
+                && match selected.entity {
+                    Some(selected) => entity != &selected,
+                    None => true,
+                }
         })
-        .map(|(entity, _)| entity)
+        .map(|(entity, _)| entity);
+    if new_entity != hovered.entity {
+        if let Some(old_entity) = hovered.entity {
+            highlight_events.send(HighlightPointEvent::new(old_entity, HighlightLevel::Normal));
+        }
+        hovered.entity = new_entity;
+        if let Some(new_entity) = hovered.entity {
+            highlight_events.send(HighlightPointEvent::new(
+                new_entity,
+                HighlightLevel::Hovered,
+            ));
+        }
+    }
 }
 
 fn move_selection(
