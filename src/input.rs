@@ -10,6 +10,7 @@ impl Plugin for InputPlugin {
         app.init_resource::<Cursor>()
             .add_system(update_cursor_positon.label(InputUpdate))
             .add_system(update_cursor_primary.label(InputUpdate))
+            .add_system(update_cursor_secondary.label(InputUpdate))
             .add_system(update_cursor_alt.label(InputUpdate));
     }
 }
@@ -18,6 +19,7 @@ impl Plugin for InputPlugin {
 pub struct Cursor {
     pub position: Option<Vec2>,
     pub primary: bool,
+    pub secondary: bool,
     pub alt: bool,
 }
 
@@ -44,6 +46,10 @@ fn update_cursor_positon(
 
 fn update_cursor_primary(input: Res<Input<MouseButton>>, mut cursor: ResMut<Cursor>) {
     cursor.primary = input.just_pressed(MouseButton::Left);
+}
+
+fn update_cursor_secondary(input: Res<Input<MouseButton>>, mut cursor: ResMut<Cursor>) {
+    cursor.secondary = input.just_pressed(MouseButton::Right);
 }
 
 fn update_cursor_alt(input: Res<Input<KeyCode>>, mut cursor: ResMut<Cursor>) {
