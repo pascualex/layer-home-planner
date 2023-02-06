@@ -2,8 +2,12 @@ use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
 use crate::{
+    command::CommandApplication,
     palette,
-    point::{ConnectPointEvent, Point},
+    plan::{
+        point::{connect_points, ConnectPointEvent, Point},
+        PlanUpdate,
+    },
     BASE_PRIORITY,
 };
 
@@ -15,8 +19,13 @@ pub struct LinePlugin;
 impl Plugin for LinePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnLineEvent>()
-            .add_system(spawn_lines)
-            .add_system(update_lines);
+            .add_system(
+                spawn_lines
+                    .label(PlanUpdate)
+                    .after(CommandApplication)
+                    .after(connect_points),
+            )
+            .add_system(update_lines.label(PlanUpdate).after(CommandApplication));
     }
 }
 
@@ -55,34 +64,20 @@ impl Line {
 
 fn spawn_lines(
     mut line_events: EventReader<SpawnLineEvent>,
-    query: Query<&Transform, With<Point>>,
     mut point_events: EventWriter<ConnectPointEvent>,
     mut commands: Commands,
 ) {
     for event in line_events.iter() {
-        let Ok(transform_a) = query.get(event.point_a) else {
-            continue;
-        };
-        let Ok(transform_b) = query.get(event.point_b) else {
-            continue;
-        };
-
-        let (position, local_a, local_b) = calculate_line(
-            transform_a.translation.truncate(),
-            transform_b.translation.truncate(),
-        );
-
         let entity = commands
             .spawn((
                 GeometryBuilder::build_as(
-                    &shapes::Line(local_a, local_b),
+                    &shapes::Line(Vec2::ZERO, Vec2::ZERO),
                     DrawMode::Stroke(StrokeMode::new(palette::DARK_WHITE, LINE_WIDTH)),
-                    Transform::from_translation(position.extend(LINE_PRIORITY)),
+                    Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
                 ),
                 Line::new(event.point_a, event.point_b),
             ))
             .id();
-
         point_events.send(ConnectPointEvent::new(event.point_a, entity));
         point_events.send(ConnectPointEvent::new(event.point_b, entity));
     }

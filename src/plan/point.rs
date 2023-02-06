@@ -3,7 +3,11 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{line::LINE_PRIORITY, palette};
+use crate::{
+    command::CommandApplication,
+    palette,
+    plan::{line::LINE_PRIORITY, PlanUpdate},
+};
 
 pub const POINT_RADIUS: f32 = 0.1;
 pub const POINT_PRIORITY: f32 = LINE_PRIORITY + 1.0;
@@ -20,21 +24,19 @@ impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnPointWithEntityEvent>()
             .add_event::<ConnectPointEvent>()
-            .add_event::<HighlightPointEvent>()
-            .add_system(spawn_points.label(PointSpawn))
-            .add_system(connect_points)
-            .add_system(highlight_points);
+            .add_system(spawn_points.label(PlanUpdate).after(CommandApplication))
+            .add_system(connect_points.label(PlanUpdate).after(CommandApplication))
+            .add_system(highlight_points.label(PlanUpdate).after(CommandApplication));
     }
 }
 
 pub struct SpawnPointWithEntityEvent {
     pub entity: Entity,
-    pub position: Vec2,
 }
 
 impl SpawnPointWithEntityEvent {
-    pub fn new(entity: Entity, position: Vec2) -> Self {
-        Self { entity, position }
+    pub fn new(entity: Entity) -> Self {
+        Self { entity }
     }
 }
 
@@ -49,17 +51,6 @@ impl ConnectPointEvent {
     }
 }
 
-pub struct HighlightPointEvent {
-    pub point: Entity,
-    pub level: HighlightLevel,
-}
-
-impl HighlightPointEvent {
-    pub fn new(point: Entity, level: HighlightLevel) -> Self {
-        Self { point, level }
-    }
-}
-
 #[derive(Component)]
 pub struct Point {
     pub lines: Vec<Entity>,
@@ -71,9 +62,12 @@ impl Point {
     }
 }
 
-pub enum HighlightLevel {
+#[derive(Component)]
+pub enum Highlight {
     Normal,
+    #[allow(dead_code)]
     Hovered,
+    #[allow(dead_code)]
     Selected,
 }
 
@@ -88,17 +82,18 @@ fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands
                 &shape,
                 DrawMode::Fill(FillMode::color(NORMAL_COLOR)),
                 Transform {
-                    translation: event.position.extend(POINT_PRIORITY),
+                    translation: Vec2::ZERO.extend(POINT_PRIORITY),
                     rotation: Quat::from_rotation_z(PI / 4.0),
                     ..default()
                 },
             ),
             Point::new(),
+            Highlight::Normal,
         ));
     }
 }
 
-fn connect_points(mut events: EventReader<ConnectPointEvent>, mut query: Query<&mut Point>) {
+pub fn connect_points(mut events: EventReader<ConnectPointEvent>, mut query: Query<&mut Point>) {
     for event in events.iter() {
         let Ok(mut point) = query.get_mut(event.point) else {
             return;
@@ -107,18 +102,12 @@ fn connect_points(mut events: EventReader<ConnectPointEvent>, mut query: Query<&
     }
 }
 
-fn highlight_points(
-    mut events: EventReader<HighlightPointEvent>,
-    mut query: Query<&mut DrawMode, With<Point>>,
-) {
-    for event in events.iter() {
-        let Ok(mut draw_mode) = query.get_mut(event.point) else {
-            continue;
-        };
-        let color = match event.level {
-            HighlightLevel::Normal => NORMAL_COLOR,
-            HighlightLevel::Hovered => HOVERED_COLOR,
-            HighlightLevel::Selected => SELECTED_COLOR,
+fn highlight_points(mut query: Query<(&mut DrawMode, &Highlight), Changed<Highlight>>) {
+    for (mut draw_mode, highlight) in &mut query {
+        let color = match highlight {
+            Highlight::Normal => NORMAL_COLOR,
+            Highlight::Hovered => HOVERED_COLOR,
+            Highlight::Selected => SELECTED_COLOR,
         };
         *draw_mode = DrawMode::Fill(FillMode::color(color));
     }
