@@ -5,6 +5,7 @@ use bevy_prototype_lyon::prelude::*;
 
 use crate::{
     command::CommandApplication,
+    input::{Cursor, Hover},
     palette,
     plan::{line::LINE_PRIORITY, PlanUpdate},
 };
@@ -22,12 +23,24 @@ pub struct PointPlugin;
 
 impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SpawnPointWithEntityEvent>()
+        app.init_resource::<Selection>()
+            .add_event::<SpawnPointWithEntityEvent>()
             .add_event::<ConnectPointEvent>()
             .add_system(spawn_points.label(PlanUpdate).after(CommandApplication))
             .add_system(connect_points.label(PlanUpdate).after(CommandApplication))
-            .add_system(highlight_points.label(PlanUpdate).after(CommandApplication));
+            .add_system(highlight_points.label(PlanUpdate).after(CommandApplication))
+            .add_system(
+                move_selection_to_cursor
+                    .after(CommandApplication)
+                    .before(PlanUpdate),
+            )
+            .add_system(highlight_points.after(PlanUpdate));
     }
+}
+
+#[derive(Resource, Default)]
+pub struct Selection {
+    pub point: Option<Entity>,
 }
 
 pub struct SpawnPointWithEntityEvent {
@@ -62,15 +75,6 @@ impl Point {
     }
 }
 
-#[derive(Component)]
-pub enum Highlight {
-    Normal,
-    #[allow(dead_code)]
-    Hovered,
-    #[allow(dead_code)]
-    Selected,
-}
-
 fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands: Commands) {
     for event in events.iter() {
         let shape = shapes::Rectangle {
@@ -88,7 +92,6 @@ fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands
                 },
             ),
             Point::new(),
-            Highlight::Normal,
         ));
     }
 }
@@ -102,12 +105,42 @@ pub fn connect_points(mut events: EventReader<ConnectPointEvent>, mut query: Que
     }
 }
 
-fn highlight_points(mut query: Query<(&mut DrawMode, &Highlight), Changed<Highlight>>) {
-    for (mut draw_mode, highlight) in &mut query {
-        let color = match highlight {
-            Highlight::Normal => NORMAL_COLOR,
-            Highlight::Hovered => HOVERED_COLOR,
-            Highlight::Selected => SELECTED_COLOR,
+fn move_selection_to_cursor(
+    cursor: Res<Cursor>,
+    input: Res<Input<KeyCode>>,
+    selection: Res<Selection>,
+    mut query: Query<&mut Transform, With<Point>>,
+) {
+    let Some(entity) = selection.point else {
+        return;
+    };
+    let Ok(mut transform) = query.get_mut(entity) else {
+        return;
+    };
+    if let Some(position) = cursor.position {
+        let decimals = if input.pressed(KeyCode::LAlt) { 2 } else { 1 };
+        transform.translation.x = round(position.x, decimals);
+        transform.translation.y = round(position.y, decimals);
+    }
+}
+
+fn round(number: f32, decimals: u32) -> f32 {
+    let offset = 10_i32.pow(decimals) as f32;
+    (number * offset).round() / offset
+}
+
+fn highlight_points(
+    selection: Res<Selection>,
+    hover: Res<Hover>,
+    mut query: Query<(Entity, &mut DrawMode)>,
+) {
+    for (entity, mut draw_mode) in &mut query {
+        let color = if Some(entity) == selection.point {
+            SELECTED_COLOR
+        } else if Some(entity) == hover.point {
+            HOVERED_COLOR
+        } else {
+            NORMAL_COLOR
         };
         *draw_mode = DrawMode::Fill(FillMode::color(color));
     }

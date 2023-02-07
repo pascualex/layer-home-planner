@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     action::ActionHandling,
     command::CommandApplication,
-    plan::{line::SpawnLineEvent, point::SpawnPointWithEntityEvent, Selection},
+    plan::{line::SpawnLineEvent, point::Selection, point::SpawnPointWithEntityEvent},
 };
 
 pub struct PointCommandPlugin;
