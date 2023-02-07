@@ -4,9 +4,6 @@ use bevy::prelude::*;
 
 use self::point::PointActionPlugin;
 
-#[derive(SystemLabel)]
-pub struct ActionHandling;
-
 pub struct ActionPlugin;
 
 impl Plugin for ActionPlugin {

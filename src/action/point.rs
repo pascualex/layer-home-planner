@@ -1,34 +1,23 @@
 use bevy::prelude::*;
 
 use crate::{
-    action::{ActionHandling, ActionState},
+    action::ActionState,
     command::{CreationCommand, ExtensionCommand, SelectionCommand},
-    input::{Hover, InputProcessing},
+    input::Hover,
+    AppStage,
 };
 
 pub struct PointActionPlugin;
 
 impl Plugin for PointActionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            handle_select_action
-                .label(ActionHandling)
-                .after(InputProcessing),
-        )
-        .add_system(
-            handle_deselect_action
-                .label(ActionHandling)
-                .after(InputProcessing),
-        )
-        .add_system(
-            handle_create_action
-                .label(ActionHandling)
-                .after(InputProcessing),
-        )
-        .add_system(
-            handle_extend_action
-                .label(ActionHandling)
-                .after(InputProcessing),
+        app.add_system_set_to_stage(
+            AppStage::Action,
+            SystemSet::new()
+                .with_system(handle_select_action)
+                .with_system(handle_deselect_action)
+                .with_system(handle_create_action)
+                .with_system(handle_extend_action),
         );
     }
 }

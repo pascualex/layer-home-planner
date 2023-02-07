@@ -5,9 +5,6 @@ use bevy::prelude::*;
 
 use self::{line::LinePlugin, point::PointPlugin};
 
-#[derive(SystemLabel)]
-pub struct PlanUpdate;
-
 pub struct PlanPlugin;
 
 impl Plugin for PlanPlugin {

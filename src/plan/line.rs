@@ -2,13 +2,9 @@ use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
 use crate::{
-    command::CommandApplication,
     palette,
-    plan::{
-        point::{connect_points, ConnectPointEvent, Point},
-        PlanUpdate,
-    },
-    BASE_PRIORITY,
+    plan::point::{Point, PointReconciliation},
+    AppStage, BASE_PRIORITY,
 };
 
 pub const LINE_WIDTH: f32 = 0.025;
@@ -18,25 +14,33 @@ pub struct LinePlugin;
 
 impl Plugin for LinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SpawnLineEvent>()
-            .add_system(
-                spawn_lines
-                    .label(PlanUpdate)
-                    .after(CommandApplication)
-                    .after(connect_points),
+        app.add_event::<SpawnLineInstruction>()
+            .add_system_set_to_stage(
+                AppStage::Instruction,
+                SystemSet::new().with_system(spawn_lines),
             )
-            .add_system(update_lines.label(PlanUpdate).after(CommandApplication));
+            .add_system_set_to_stage(
+                AppStage::Reconciliation,
+                SystemSet::new()
+                    .after(PointReconciliation)
+                    .with_system(update_lines),
+            );
     }
 }
 
-pub struct SpawnLineEvent {
+pub struct SpawnLineInstruction {
+    pub entity: Entity,
     pub point_a: Entity,
     pub point_b: Entity,
 }
 
-impl SpawnLineEvent {
-    pub fn new(point_a: Entity, point_b: Entity) -> Self {
-        Self { point_a, point_b }
+impl SpawnLineInstruction {
+    pub fn new(entity: Entity, point_a: Entity, point_b: Entity) -> Self {
+        Self {
+            entity,
+            point_a,
+            point_b,
+        }
     }
 }
 
@@ -62,24 +66,16 @@ impl Line {
     }
 }
 
-fn spawn_lines(
-    mut line_events: EventReader<SpawnLineEvent>,
-    mut point_events: EventWriter<ConnectPointEvent>,
-    mut commands: Commands,
-) {
-    for event in line_events.iter() {
-        let entity = commands
-            .spawn((
-                GeometryBuilder::build_as(
-                    &shapes::Line(Vec2::ZERO, Vec2::ZERO),
-                    DrawMode::Stroke(StrokeMode::new(palette::DARK_WHITE, LINE_WIDTH)),
-                    Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
-                ),
-                Line::new(event.point_a, event.point_b),
-            ))
-            .id();
-        point_events.send(ConnectPointEvent::new(event.point_a, entity));
-        point_events.send(ConnectPointEvent::new(event.point_b, entity));
+fn spawn_lines(mut instructions: EventReader<SpawnLineInstruction>, mut commands: Commands) {
+    for instruction in instructions.iter() {
+        commands.entity(instruction.entity).insert((
+            GeometryBuilder::build_as(
+                &shapes::Line(Vec2::ZERO, Vec2::ZERO),
+                DrawMode::Stroke(StrokeMode::new(palette::DARK_WHITE, LINE_WIDTH)),
+                Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
+            ),
+            Line::new(instruction.point_a, instruction.point_b),
+        ));
     }
 }
 

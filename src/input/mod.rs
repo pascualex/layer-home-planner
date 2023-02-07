@@ -3,10 +3,8 @@ use bevy::{prelude::*, render::camera::RenderTarget};
 use crate::{
     action::ActionState,
     plan::point::{Point, Selection, POINT_RADIUS},
+    AppStage,
 };
-
-#[derive(SystemLabel)]
-pub struct InputProcessing;
 
 pub struct InputPlugin;
 
@@ -14,9 +12,13 @@ impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Cursor>()
             .init_resource::<Hover>()
-            .add_system(update_cursor.before(InputProcessing))
-            .add_system(update_hover.before(InputProcessing))
-            .add_system(process_input.label(InputProcessing));
+            .add_system_set_to_stage(
+                AppStage::Input,
+                SystemSet::new()
+                    .with_system(update_cursor)
+                    .with_system(update_hover)
+                    .with_system(process_input),
+            );
     }
 }
 
