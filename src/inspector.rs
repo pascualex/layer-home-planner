@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     palette,
-    plan::{point::Point, Selection},
+    plan::point::{Point, Selection},
 };
 
 pub struct InspectorPlugin;

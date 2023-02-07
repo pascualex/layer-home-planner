@@ -2,10 +2,7 @@ use bevy::{prelude::*, render::camera::RenderTarget};
 
 use crate::{
     action::ActionState,
-    plan::{
-        point::{Point, POINT_RADIUS},
-        Selection,
-    },
+    plan::point::{Point, Selection, POINT_RADIUS},
 };
 
 #[derive(SystemLabel)]
