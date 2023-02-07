@@ -152,7 +152,7 @@ fn round(number: f32, decimals: u32) -> f32 {
 fn highlight_points(
     selection: Res<Selection>,
     hover: Res<Hover>,
-    mut query: Query<(Entity, &mut DrawMode)>,
+    mut query: Query<(Entity, &mut DrawMode), With<Point>>,
 ) {
     for (entity, mut draw_mode) in &mut query {
         let color = if Some(entity) == selection.point {
