@@ -6,9 +6,6 @@ use bevy::prelude::*;
 
 use self::point::PointCommandPlugin;
 
-#[derive(SystemLabel)]
-pub struct CommandApplication;
-
 pub struct CommandPlugin;
 
 impl Plugin for CommandPlugin {

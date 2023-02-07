@@ -4,10 +4,10 @@ use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
 use crate::{
-    command::CommandApplication,
     input::{Cursor, Hover},
     palette,
-    plan::{line::LINE_PRIORITY, PlanUpdate},
+    plan::line::LINE_PRIORITY,
+    AppStage,
 };
 
 pub const POINT_RADIUS: f32 = 0.1;
@@ -17,24 +17,28 @@ pub const HOVERED_COLOR: Color = palette::LIGHT_YELLOW;
 pub const SELECTED_COLOR: Color = palette::LIGHT_ORANGE;
 
 #[derive(SystemLabel)]
-pub struct PointSpawn;
+pub struct PointReconciliation;
 
 pub struct PointPlugin;
 
 impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Selection>()
-            .add_event::<SpawnPointWithEntityEvent>()
-            .add_event::<ConnectPointEvent>()
-            .add_system(spawn_points.label(PlanUpdate).after(CommandApplication))
-            .add_system(connect_points.label(PlanUpdate).after(CommandApplication))
-            .add_system(highlight_points.label(PlanUpdate).after(CommandApplication))
-            .add_system(
-                move_selection_to_cursor
-                    .after(CommandApplication)
-                    .before(PlanUpdate),
+            .add_event::<SpawnPointInstruction>()
+            .add_event::<ConnectPointInstruction>()
+            .add_system_set_to_stage(
+                AppStage::Instruction,
+                SystemSet::new()
+                    .with_system(spawn_points)
+                    .with_system(connect_points),
             )
-            .add_system(highlight_points.after(PlanUpdate));
+            .add_system_set_to_stage(
+                AppStage::Reconciliation,
+                SystemSet::new()
+                    .label(PointReconciliation)
+                    .with_system(move_selection_to_cursor)
+                    .with_system(highlight_points),
+            );
     }
 }
 
@@ -43,22 +47,33 @@ pub struct Selection {
     pub point: Option<Entity>,
 }
 
-pub struct SpawnPointWithEntityEvent {
+pub struct SpawnPointInstruction {
     pub entity: Entity,
+    pub lines: Vec<Entity>,
 }
 
-impl SpawnPointWithEntityEvent {
+impl SpawnPointInstruction {
     pub fn new(entity: Entity) -> Self {
-        Self { entity }
+        Self {
+            entity,
+            lines: Vec::new(),
+        }
+    }
+
+    pub fn from_lines(entity: Entity, lines: &[Entity]) -> Self {
+        Self {
+            entity,
+            lines: lines.to_vec(),
+        }
     }
 }
 
-pub struct ConnectPointEvent {
+pub struct ConnectPointInstruction {
     pub point: Entity,
     pub line: Entity,
 }
 
-impl ConnectPointEvent {
+impl ConnectPointInstruction {
     pub fn new(point: Entity, line: Entity) -> Self {
         Self { point, line }
     }
@@ -70,18 +85,20 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new() -> Self {
-        Self { lines: Vec::new() }
+    pub fn new(lines: &[Entity]) -> Self {
+        Self {
+            lines: lines.to_vec(),
+        }
     }
 }
 
-fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands: Commands) {
-    for event in events.iter() {
+fn spawn_points(mut instructions: EventReader<SpawnPointInstruction>, mut commands: Commands) {
+    for instruction in instructions.iter() {
         let shape = shapes::Rectangle {
             extents: Vec2::splat(POINT_RADIUS),
             ..default()
         };
-        commands.entity(event.entity).insert((
+        commands.entity(instruction.entity).insert((
             GeometryBuilder::build_as(
                 &shape,
                 DrawMode::Fill(FillMode::color(NORMAL_COLOR)),
@@ -91,17 +108,20 @@ fn spawn_points(mut events: EventReader<SpawnPointWithEntityEvent>, mut commands
                     ..default()
                 },
             ),
-            Point::new(),
+            Point::new(&instruction.lines),
         ));
     }
 }
 
-pub fn connect_points(mut events: EventReader<ConnectPointEvent>, mut query: Query<&mut Point>) {
-    for event in events.iter() {
-        let Ok(mut point) = query.get_mut(event.point) else {
+fn connect_points(
+    mut instructions: EventReader<ConnectPointInstruction>,
+    mut query: Query<&mut Point>,
+) {
+    for instruction in instructions.iter() {
+        let Ok(mut point) = query.get_mut(instruction.point) else {
             return;
         };
-        point.lines.push(event.line);
+        point.lines.push(instruction.line);
     }
 }
 
