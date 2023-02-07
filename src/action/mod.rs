@@ -9,7 +9,8 @@ pub struct ActionPlugin;
 impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(PointActionPlugin)
-            .init_resource::<ActionState>();
+            .init_resource::<ActionState>()
+            .init_resource::<Selection>();
     }
 }
 
@@ -20,5 +21,11 @@ pub enum ActionState {
     Select,
     Deselect,
     Create,
+    Merge,
     Extend,
+}
+
+#[derive(Resource, Default)]
+pub struct Selection {
+    pub point: Option<Entity>,
 }

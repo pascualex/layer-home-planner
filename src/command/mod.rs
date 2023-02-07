@@ -1,6 +1,4 @@
-mod point;
-
-pub use self::point::{CreationCommand, ExtensionCommand, SelectionCommand};
+pub mod point;
 
 use bevy::prelude::*;
 

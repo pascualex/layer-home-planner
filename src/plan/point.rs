@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
 use crate::{
+    action::Selection,
     input::{Cursor, Hover},
     palette,
     plan::line::LINE_PRIORITY,
@@ -25,12 +26,9 @@ impl Plugin for PointPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Selection>()
             .add_event::<SpawnPointInstruction>()
-            .add_event::<ConnectPointInstruction>()
             .add_system_set_to_stage(
                 AppStage::Instruction,
-                SystemSet::new()
-                    .with_system(spawn_points)
-                    .with_system(connect_points),
+                SystemSet::new().with_system(spawn_points),
             )
             .add_system_set_to_stage(
                 AppStage::Reconciliation,
@@ -40,11 +38,6 @@ impl Plugin for PointPlugin {
                     .with_system(highlight_points),
             );
     }
-}
-
-#[derive(Resource, Default)]
-pub struct Selection {
-    pub point: Option<Entity>,
 }
 
 pub struct SpawnPointInstruction {
@@ -65,17 +58,6 @@ impl SpawnPointInstruction {
             entity,
             lines: lines.to_vec(),
         }
-    }
-}
-
-pub struct ConnectPointInstruction {
-    pub point: Entity,
-    pub line: Entity,
-}
-
-impl ConnectPointInstruction {
-    pub fn new(point: Entity, line: Entity) -> Self {
-        Self { point, line }
     }
 }
 
@@ -110,18 +92,6 @@ fn spawn_points(mut instructions: EventReader<SpawnPointInstruction>, mut comman
             ),
             Point::new(&instruction.lines),
         ));
-    }
-}
-
-fn connect_points(
-    mut instructions: EventReader<ConnectPointInstruction>,
-    mut query: Query<&mut Point>,
-) {
-    for instruction in instructions.iter() {
-        let Ok(mut point) = query.get_mut(instruction.point) else {
-            return;
-        };
-        point.lines.push(instruction.line);
     }
 }
 
