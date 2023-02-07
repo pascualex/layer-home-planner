@@ -1,8 +1,8 @@
 use bevy::{prelude::*, render::camera::RenderTarget};
 
 use crate::{
-    action::ActionState,
-    plan::point::{Point, Selection, POINT_RADIUS},
+    action::{ActionState, Selection},
+    plan::point::{Point, POINT_RADIUS},
     AppStage,
 };
 
@@ -98,6 +98,10 @@ fn process_input(
         if hover.point.is_none() {
             if input.just_pressed(MouseButton::Left) {
                 *action_state = ActionState::Deselect;
+            }
+        } else {
+            if input.just_pressed(MouseButton::Left) {
+                *action_state = ActionState::Merge;
             }
         }
     }

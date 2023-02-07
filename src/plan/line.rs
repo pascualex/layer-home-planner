@@ -64,6 +64,14 @@ impl Line {
             None
         }
     }
+
+    pub fn reconnect(&mut self, old: Entity, new: Entity) {
+        if old == self.point_a {
+            self.point_a = new;
+        } else if old == self.point_b {
+            self.point_b = new;
+        }
+    }
 }
 
 fn spawn_lines(mut instructions: EventReader<SpawnLineInstruction>, mut commands: Commands) {
@@ -80,7 +88,10 @@ fn spawn_lines(mut instructions: EventReader<SpawnLineInstruction>, mut commands
 }
 
 fn update_lines(
-    changed_point_query: Query<(Entity, &Transform, &Point), Changed<Transform>>,
+    changed_point_query: Query<
+        (Entity, &Transform, &Point),
+        Or<(Changed<Transform>, Changed<Point>)>,
+    >,
     other_point_query: Query<&Transform, With<Point>>,
     mut line_query: Query<(&mut Transform, &mut Path, &Line), Without<Point>>,
 ) {

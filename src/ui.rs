@@ -1,10 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{
-    palette,
-    plan::point::{Point, Selection},
-    AppStage,
-};
+use crate::{action::Selection, palette, plan::point::Point, AppStage};
 
 pub struct UiPlugin;
 
