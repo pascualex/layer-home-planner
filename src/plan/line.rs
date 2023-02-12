@@ -1,9 +1,9 @@
 use bevy::prelude::*;
-use bevy_prototype_lyon::prelude::*;
+use bevy_prototype_lyon::{entity::ShapeBundle, prelude::*};
 
 use crate::{
     palette,
-    plan::point::{Point, PointReconciliation},
+    plan::point::{Point, PointUpdate},
     AppStage, BASE_PRIORITY,
 };
 
@@ -14,32 +14,30 @@ pub struct LinePlugin;
 
 impl Plugin for LinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SpawnLineInstruction>()
-            .add_system_set_to_stage(
-                AppStage::Instruction,
-                SystemSet::new().with_system(spawn_lines),
-            )
-            .add_system_set_to_stage(
-                AppStage::Reconciliation,
-                SystemSet::new()
-                    .after(PointReconciliation)
-                    .with_system(update_lines),
-            );
+        app.add_system_set_to_stage(
+            AppStage::Plan,
+            SystemSet::new()
+                .after(PointUpdate)
+                .with_system(update_lines),
+        );
     }
 }
 
-pub struct SpawnLineInstruction {
-    pub entity: Entity,
-    pub point_a: Entity,
-    pub point_b: Entity,
+#[derive(Bundle)]
+pub struct LineBundle {
+    shape: ShapeBundle,
+    line: Line,
 }
 
-impl SpawnLineInstruction {
-    pub fn new(entity: Entity, point_a: Entity, point_b: Entity) -> Self {
+impl LineBundle {
+    pub fn new(point_a: Entity, point_b: Entity) -> Self {
         Self {
-            entity,
-            point_a,
-            point_b,
+            shape: GeometryBuilder::build_as(
+                &shapes::Line(Vec2::ZERO, Vec2::ZERO),
+                DrawMode::Stroke(StrokeMode::new(palette::DARK_WHITE, LINE_WIDTH)),
+                Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
+            ),
+            line: Line::new(point_a, point_b),
         }
     }
 }
@@ -65,25 +63,12 @@ impl Line {
         }
     }
 
-    pub fn reconnect(&mut self, old: Entity, new: Entity) {
+    pub fn replace(&mut self, old: Entity, new: Entity) {
         if old == self.point_a {
             self.point_a = new;
         } else if old == self.point_b {
             self.point_b = new;
         }
-    }
-}
-
-fn spawn_lines(mut instructions: EventReader<SpawnLineInstruction>, mut commands: Commands) {
-    for instruction in instructions.iter() {
-        commands.entity(instruction.entity).insert((
-            GeometryBuilder::build_as(
-                &shapes::Line(Vec2::ZERO, Vec2::ZERO),
-                DrawMode::Stroke(StrokeMode::new(palette::DARK_WHITE, LINE_WIDTH)),
-                Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
-            ),
-            Line::new(instruction.point_a, instruction.point_b),
-        ));
     }
 }
 
