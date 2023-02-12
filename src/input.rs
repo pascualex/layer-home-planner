@@ -1,8 +1,10 @@
 use bevy::{prelude::*, render::camera::RenderTarget};
 
 use crate::{
-    action::{ActionState, Selection},
-    plan::point::{Point, POINT_RADIUS},
+    plan::{
+        point::{Point, POINT_RADIUS},
+        PlanMode,
+    },
     AppStage,
 };
 
@@ -13,11 +15,11 @@ impl Plugin for InputPlugin {
         app.init_resource::<Cursor>()
             .init_resource::<Hover>()
             .add_system_set_to_stage(
-                AppStage::Input,
+                AppStage::Binding,
                 SystemSet::new()
-                    .with_system(update_cursor)
-                    .with_system(update_hover)
-                    .with_system(process_input),
+                    .with_system(update_cursor_position)
+                    .with_system(update_cursor_mode)
+                    .with_system(update_hover),
             );
     }
 }
@@ -25,6 +27,39 @@ impl Plugin for InputPlugin {
 #[derive(Resource, Default)]
 pub struct Cursor {
     pub position: Option<Vec2>,
+    pub mode: CursorMode,
+}
+
+impl Cursor {
+    pub fn track_position(&self) -> Option<Vec2> {
+        self.position.map(|position| {
+            Vec2::new(
+                Self::round(position.x, self.mode.decimals()),
+                Self::round(position.y, self.mode.decimals()),
+            )
+        })
+    }
+
+    fn round(number: f32, decimals: u32) -> f32 {
+        let offset = 10_i32.pow(decimals) as f32;
+        (number * offset).round() / offset
+    }
+}
+
+#[derive(Resource, Default)]
+pub enum CursorMode {
+    #[default]
+    Decimeters,
+    Centimeters,
+}
+
+impl CursorMode {
+    fn decimals(&self) -> u32 {
+        match self {
+            CursorMode::Decimeters => 1,
+            CursorMode::Centimeters => 2,
+        }
+    }
 }
 
 #[derive(Resource, Default)]
@@ -32,7 +67,7 @@ pub struct Hover {
     pub point: Option<Entity>,
 }
 
-fn update_cursor(
+fn update_cursor_position(
     windows: Res<Windows>,
     query: Query<(&GlobalTransform, &Camera)>,
     mut cursor: ResMut<Cursor>,
@@ -42,67 +77,42 @@ fn update_cursor(
         RenderTarget::Window(id) => windows.get(id).unwrap(),
         RenderTarget::Image(_) => panic!(),
     };
-    cursor.position = if let Some(screen_position) = window.cursor_position() {
+    cursor.position = window.cursor_position().and_then(|screen_position| {
         let size = Vec2::new(window.width(), window.height());
         let ndc = (screen_position / size) * 2.0 - Vec2::ONE;
         camera
             .ndc_to_world(transform, ndc.extend(-1.0))
             .map(|p| p.truncate())
-    } else {
-        None
+    });
+}
+
+fn update_cursor_mode(input: Res<Input<KeyCode>>, mut cursor: ResMut<Cursor>) {
+    cursor.mode = match input.pressed(KeyCode::LAlt) || input.pressed(KeyCode::RAlt) {
+        true => CursorMode::Centimeters,
+        false => CursorMode::Decimeters,
     };
 }
 
 fn update_hover(
     cursor: Res<Cursor>,
     query: Query<(Entity, &Transform), With<Point>>,
-    selection: Res<Selection>,
+    mode: Res<PlanMode>,
     mut hover: ResMut<Hover>,
 ) {
     let Some(cursor_position) = cursor.position else {
         return;
     };
     let radius_squared = POINT_RADIUS * POINT_RADIUS;
+    let tracked_entity = match *mode {
+        PlanMode::Track(entity, _) => Some(entity),
+        _ => None,
+    };
     hover.point = query
         .iter()
-        .filter(|(entity, _)| Some(*entity) != selection.point)
+        .filter(|(entity, _)| Some(*entity) != tracked_entity)
         .find(|(_, transform)| {
             let position = transform.translation.truncate();
             Vec2::distance_squared(position, cursor_position) <= radius_squared
         })
         .map(|(entity, _)| entity);
-}
-
-fn process_input(
-    selection: Res<Selection>,
-    hover: Res<Hover>,
-    input: Res<Input<MouseButton>>,
-    mut action_state: ResMut<ActionState>,
-) {
-    *action_state = ActionState::None;
-    #[allow(clippy::collapsible_if)]
-    #[allow(clippy::collapsible_else_if)]
-    if selection.point.is_none() {
-        if hover.point.is_none() {
-            if input.just_pressed(MouseButton::Left) {
-                *action_state = ActionState::Create;
-            }
-        } else {
-            if input.just_pressed(MouseButton::Left) {
-                *action_state = ActionState::Select;
-            } else if input.just_pressed(MouseButton::Right) {
-                *action_state = ActionState::Extend;
-            }
-        }
-    } else {
-        if hover.point.is_none() {
-            if input.just_pressed(MouseButton::Left) {
-                *action_state = ActionState::Deselect;
-            }
-        } else {
-            if input.just_pressed(MouseButton::Left) {
-                *action_state = ActionState::Merge;
-            }
-        }
-    }
 }

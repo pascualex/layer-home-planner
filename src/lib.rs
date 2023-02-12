@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 mod action;
-mod command;
+mod binding;
 mod input;
 mod palette;
 mod plan;
@@ -10,7 +10,7 @@ mod ui;
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 
 use self::{
-    action::ActionPlugin, command::CommandPlugin, input::InputPlugin, plan::PlanPlugin,
+    action::ActionPlugin, binding::BindingPlugin, input::InputPlugin, plan::PlanPlugin,
     ui::UiPlugin,
 };
 
@@ -20,10 +20,9 @@ const BASE_PRIORITY: f32 = 0.0;
 #[derive(StageLabel)]
 pub enum AppStage {
     Input,
+    Binding,
     Action,
-    Command,
-    Instruction,
-    Reconciliation,
+    Plan,
     Ui,
 }
 
@@ -38,32 +37,23 @@ impl Plugin for AppPlugin {
         )
         .add_stage_after(
             AppStage::Input,
+            AppStage::Binding,
+            SystemStage::single_threaded(),
+        )
+        .add_stage_after(
+            AppStage::Binding,
             AppStage::Action,
             SystemStage::single_threaded(),
         )
         .add_stage_after(
             AppStage::Action,
-            AppStage::Command,
+            AppStage::Plan,
             SystemStage::single_threaded(),
         )
-        .add_stage_after(
-            AppStage::Command,
-            AppStage::Instruction,
-            SystemStage::single_threaded(),
-        )
-        .add_stage_after(
-            AppStage::Instruction,
-            AppStage::Reconciliation,
-            SystemStage::single_threaded(),
-        )
-        .add_stage_after(
-            AppStage::Reconciliation,
-            AppStage::Ui,
-            SystemStage::single_threaded(),
-        )
-        .add_plugin(ActionPlugin)
-        .add_plugin(CommandPlugin)
+        .add_stage_after(AppStage::Plan, AppStage::Ui, SystemStage::single_threaded())
         .add_plugin(InputPlugin)
+        .add_plugin(BindingPlugin)
+        .add_plugin(ActionPlugin)
         .add_plugin(PlanPlugin)
         .add_plugin(UiPlugin)
         .add_startup_system(setup);
