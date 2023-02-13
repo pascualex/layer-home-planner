@@ -22,7 +22,6 @@ pub enum AppSet {
     Input,
     Binding,
     Action,
-    ActionFlush,
     Consolidation,
     Ui,
 }
@@ -36,7 +35,6 @@ impl Plugin for AppPlugin {
                 AppSet::Input,
                 AppSet::Binding,
                 AppSet::Action,
-                AppSet::ActionFlush,
                 AppSet::Consolidation,
                 AppSet::Ui,
             )

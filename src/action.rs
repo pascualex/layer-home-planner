@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 
 use crate::{
     plan::{
@@ -9,12 +9,21 @@ use crate::{
     AppSet,
 };
 
+#[derive(ScheduleLabel, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ActionSchedule;
+
+#[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
+struct ActionSet;
+
 pub struct ActionPlugin;
 
 impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BindedAction>()
-            .add_systems(
+            .add_system(run_schedule.in_set(AppSet::Action))
+            .init_schedule(ActionSchedule)
+            .add_systems_to_schedule(
+                ActionSchedule,
                 (
                     handle_create_action,
                     handle_delete_action,
@@ -25,9 +34,9 @@ impl Plugin for ActionPlugin {
                     handle_track_action,
                     handle_unselect_action,
                 )
-                    .in_set(AppSet::Action),
+                    .in_set(ActionSet),
             )
-            .add_system(apply_system_buffers.in_set(AppSet::ActionFlush));
+            .add_system_to_schedule(ActionSchedule, apply_system_buffers.after(ActionSet));
     }
 }
 
@@ -43,6 +52,10 @@ pub enum BindedAction {
     Select(Entity),
     Track(Entity),
     Unselect,
+}
+
+fn run_schedule(world: &mut World) {
+    world.run_schedule(ActionSchedule);
 }
 
 fn handle_create_action(
