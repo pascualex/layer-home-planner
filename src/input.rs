@@ -1,11 +1,11 @@
-use bevy::{prelude::*, render::camera::RenderTarget};
+use bevy::prelude::*;
 
 use crate::{
     plan::{
         point::{Point, POINT_RADIUS},
         PlanMode,
     },
-    AppStage,
+    AppSet,
 };
 
 pub struct InputPlugin;
@@ -14,12 +14,8 @@ impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Cursor>()
             .init_resource::<Hover>()
-            .add_system_set_to_stage(
-                AppStage::Binding,
-                SystemSet::new()
-                    .with_system(update_cursor_position)
-                    .with_system(update_cursor_mode)
-                    .with_system(update_hover),
+            .add_systems(
+                (update_cursor_position, update_cursor_mode, update_hover).in_set(AppSet::Input),
             );
     }
 }
@@ -68,15 +64,12 @@ pub struct Hover {
 }
 
 fn update_cursor_position(
-    windows: Res<Windows>,
-    query: Query<(&GlobalTransform, &Camera)>,
+    window_query: Query<&Window>,
+    camera_query: Query<(&GlobalTransform, &Camera)>,
     mut cursor: ResMut<Cursor>,
 ) {
-    let (transform, camera) = query.single();
-    let window = match camera.target {
-        RenderTarget::Window(id) => windows.get(id).unwrap(),
-        RenderTarget::Image(_) => panic!(),
-    };
+    let window = window_query.single();
+    let (transform, camera) = camera_query.single();
     cursor.position = window.cursor_position().and_then(|screen_position| {
         let size = Vec2::new(window.width(), window.height());
         let ndc = (screen_position / size) * 2.0 - Vec2::ONE;

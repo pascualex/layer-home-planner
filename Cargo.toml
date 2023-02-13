@@ -10,4 +10,4 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = "0.9"
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "f7fbfaf9c72035e98c6b6cec0c7d26ff9f5b1c82" }

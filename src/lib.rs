@@ -17,11 +17,12 @@ use self::{
 
 const VIEWPORT_SIZE: f32 = 10.0;
 
-#[derive(StageLabel)]
-pub enum AppStage {
+#[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum AppSet {
     Input,
     Binding,
     Action,
+    ActionFlush,
     Consolidation,
     Ui,
 }
@@ -30,26 +31,24 @@ pub struct AppPlugin;
 
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
-        app.add_stage_before(CoreStage::Update, AppStage::Input, SystemStage::parallel())
-            .add_stage_after(AppStage::Input, AppStage::Binding, SystemStage::parallel())
-            .add_stage_after(AppStage::Binding, AppStage::Action, SystemStage::parallel())
-            .add_stage_after(
-                AppStage::Action,
-                AppStage::Consolidation,
-                SystemStage::parallel(),
+        app.configure_sets(
+            (
+                AppSet::Input,
+                AppSet::Binding,
+                AppSet::Action,
+                AppSet::ActionFlush,
+                AppSet::Consolidation,
+                AppSet::Ui,
             )
-            .add_stage_after(
-                AppStage::Consolidation,
-                AppStage::Ui,
-                SystemStage::parallel(),
-            )
-            .add_plugin(PlanPlugin)
-            .add_plugin(InputPlugin)
-            .add_plugin(BindingPlugin)
-            .add_plugin(ActionPlugin)
-            .add_plugin(ConsolidationPlugin)
-            .add_plugin(UiPlugin)
-            .add_startup_system(setup);
+                .chain(),
+        )
+        .add_plugin(PlanPlugin)
+        .add_plugin(InputPlugin)
+        .add_plugin(BindingPlugin)
+        .add_plugin(ActionPlugin)
+        .add_plugin(ConsolidationPlugin)
+        .add_plugin(UiPlugin)
+        .add_startup_system(setup);
     }
 }
 

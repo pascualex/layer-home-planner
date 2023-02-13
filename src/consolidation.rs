@@ -7,19 +7,20 @@ use crate::{
         point::{Point, PointAssets},
         PlanMode,
     },
-    AppStage,
+    AppSet,
 };
 
 pub struct ConsolidationPlugin;
 
 impl Plugin for ConsolidationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set_to_stage(
-            AppStage::Consolidation,
-            SystemSet::new()
-                .with_system(highlight_points)
-                .with_system(track_cursor_with_selection)
-                .with_system(update_lines.after(track_cursor_with_selection)),
+        app.add_systems(
+            (
+                highlight_points,
+                track_cursor_with_selection,
+                update_lines.after(track_cursor_with_selection),
+            )
+                .in_set(AppSet::Consolidation),
         );
     }
 }
