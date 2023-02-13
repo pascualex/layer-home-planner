@@ -6,25 +6,28 @@ use crate::{
         point::{Point, PointAssets, PointBundle},
         PlanMode, TrackMode,
     },
-    AppStage,
+    AppSet,
 };
 
 pub struct ActionPlugin;
 
 impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<BindedAction>().add_system_set_to_stage(
-            AppStage::Action,
-            SystemSet::new()
-                .with_system(handle_create_action)
-                .with_system(handle_delete_action)
-                .with_system(handle_extend_action)
-                .with_system(handle_merge_action)
-                .with_system(handle_move_action)
-                .with_system(handle_select_action)
-                .with_system(handle_track_action)
-                .with_system(handle_unselect_action),
-        );
+        app.init_resource::<BindedAction>()
+            .add_systems(
+                (
+                    handle_create_action,
+                    handle_delete_action,
+                    handle_extend_action,
+                    handle_merge_action,
+                    handle_move_action,
+                    handle_select_action,
+                    handle_track_action,
+                    handle_unselect_action,
+                )
+                    .in_set(AppSet::Action),
+            )
+            .add_system(apply_system_buffers.in_set(AppSet::ActionFlush));
     }
 }
 

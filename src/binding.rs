@@ -4,17 +4,14 @@ use crate::{
     action::BindedAction,
     input::Hover,
     plan::{PlanMode, TrackMode},
-    AppStage,
+    AppSet,
 };
 
 pub struct BindingPlugin;
 
 impl Plugin for BindingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set_to_stage(
-            AppStage::Binding,
-            SystemSet::new().with_system(process_bindings),
-        );
+        app.add_system(process_bindings.in_set(AppSet::Binding));
     }
 }
 

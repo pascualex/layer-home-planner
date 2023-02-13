@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     palette,
     plan::{point::Point, PlanMode},
-    AppStage,
+    AppSet,
 };
 
 pub struct UiPlugin;
@@ -12,10 +12,7 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<UiAssets>()
             .add_startup_system(spawn_inspector_panel)
-            .add_system_set_to_stage(
-                AppStage::Ui,
-                SystemSet::new().with_system(update_inspector_text),
-            );
+            .add_system(update_inspector_text.in_set(AppSet::Ui));
     }
 }
 
