@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use crate::{
     plan::{
-        line::{Line, LineBundle},
-        point::{Point, PointBundle},
+        line::{Line, LineAssets, LineBundle},
+        point::{Point, PointAssets, PointBundle},
         PlanMode, TrackMode,
     },
     AppStage,
@@ -45,10 +45,11 @@ pub enum BindedAction {
 fn handle_create_action(
     binded_action: Res<BindedAction>,
     mut plan_mode: ResMut<PlanMode>,
+    assets: Res<PointAssets>,
     mut commands: Commands,
 ) {
     if let BindedAction::Create = *binded_action {
-        let entity = commands.spawn(PointBundle::default()).id();
+        let entity = commands.spawn(PointBundle::empty(&assets)).id();
         *plan_mode = PlanMode::Track(entity, TrackMode::Place);
     }
 }
@@ -80,16 +81,22 @@ fn handle_extend_action(
     binded_action: Res<BindedAction>,
     mut query: Query<&mut Point>,
     mut plan_mode: ResMut<PlanMode>,
+    point_assets: Res<PointAssets>,
+    line_assets: Res<LineAssets>,
     mut commands: Commands,
 ) {
     if let BindedAction::Extend(old_point_entity) = *binded_action {
-        let new_point_entity = commands.spawn(PointBundle::default()).id();
+        let new_point_entity = commands.spawn_empty().id();
         let line_entity = commands
-            .spawn(LineBundle::new(old_point_entity, new_point_entity))
+            .spawn(LineBundle::new(
+                old_point_entity,
+                new_point_entity,
+                &line_assets,
+            ))
             .id();
         commands
             .entity(new_point_entity)
-            .insert(PointBundle::from_line_entity(line_entity));
+            .insert(PointBundle::from_line(line_entity, &point_assets));
         let mut old_point = query.get_mut(old_point_entity).unwrap();
         old_point.lines.push(line_entity);
         *plan_mode = PlanMode::Track(new_point_entity, TrackMode::Place);

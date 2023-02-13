@@ -1,42 +1,87 @@
-use bevy::prelude::*;
-use bevy_prototype_lyon::{entity::ShapeBundle, prelude::*};
-
-use crate::{
-    palette,
-    plan::point::{Point, PointUpdate},
-    AppStage, BASE_PRIORITY,
+use bevy::{
+    prelude::*,
+    render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
 
-pub const LINE_WIDTH: f32 = 0.025;
+use crate::plan::{BASE_PRIORITY, DEFAULT_COLOR};
+
+pub const LINE_WIDTH: f32 = 0.02;
 pub const LINE_PRIORITY: f32 = BASE_PRIORITY + 1.0;
 
 pub struct LinePlugin;
 
 impl Plugin for LinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set_to_stage(
-            AppStage::Plan,
-            SystemSet::new()
-                .after(PointUpdate)
-                .with_system(update_lines),
+        app.init_resource::<LineAssets>();
+    }
+}
+
+#[derive(Resource)]
+pub struct LineAssets {
+    material: Handle<ColorMaterial>,
+}
+
+impl FromWorld for LineAssets {
+    fn from_world(world: &mut World) -> Self {
+        let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
+        Self {
+            material: materials.add(DEFAULT_COLOR.into()),
+        }
+    }
+}
+
+pub struct LineShape {
+    pub point_a: Vec2,
+    pub point_b: Vec2,
+    pub width: f32,
+}
+
+impl LineShape {
+    pub fn new(point_a: Vec2, point_b: Vec2, width: f32) -> Self {
+        Self {
+            point_a,
+            point_b,
+            width,
+        }
+    }
+}
+
+impl From<LineShape> for Mesh {
+    fn from(line: LineShape) -> Self {
+        let extension = LINE_WIDTH / 2.0;
+        let diff = line.point_a - line.point_b;
+        let perp_norm = diff.perp().normalize_or_zero();
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_POSITION,
+            vec![
+                (line.point_a - perp_norm * extension).extend(0.0),
+                (line.point_a + perp_norm * extension).extend(0.0),
+                (line.point_b - perp_norm * extension).extend(0.0),
+                (line.point_b + perp_norm * extension).extend(0.0),
+            ],
         );
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![Vec3::Z; 4]);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![Vec2::ZERO; 4]);
+        mesh.set_indices(Some(Indices::U16(vec![0, 1, 2, 1, 3, 2])));
+        mesh
     }
 }
 
 #[derive(Bundle)]
 pub struct LineBundle {
-    shape: ShapeBundle,
+    material_mesh: ColorMesh2dBundle,
     line: Line,
 }
 
 impl LineBundle {
-    pub fn new(point_a: Entity, point_b: Entity) -> Self {
+    pub fn new(point_a: Entity, point_b: Entity, assets: &LineAssets) -> Self {
         Self {
-            shape: GeometryBuilder::build_as(
-                &shapes::Line(Vec2::ZERO, Vec2::ZERO),
-                DrawMode::Stroke(StrokeMode::new(palette::DARK_WHITE, LINE_WIDTH)),
-                Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
-            ),
+            material_mesh: ColorMesh2dBundle {
+                material: assets.material.clone(),
+                transform: Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
+                ..default()
+            },
             line: Line::new(point_a, point_b),
         }
     }
@@ -70,41 +115,4 @@ impl Line {
             self.point_b = new;
         }
     }
-}
-
-fn update_lines(
-    changed_point_query: Query<
-        (Entity, &Transform, &Point),
-        Or<(Changed<Transform>, Changed<Point>)>,
-    >,
-    other_point_query: Query<&Transform, With<Point>>,
-    mut line_query: Query<(&mut Transform, &mut Path, &Line), Without<Point>>,
-) {
-    for (point_a_entity, transform_a, point_a) in &changed_point_query {
-        for &line_entity in &point_a.lines {
-            let Ok((mut line_transform, mut path, line)) = line_query.get_mut(line_entity) else {
-                continue;
-            };
-            let Some(point_b_entity) = line.other(point_a_entity) else {
-                continue;
-            };
-            let Ok(transform_b) = other_point_query.get(point_b_entity) else {
-                continue;
-            };
-            let (position, local_a, local_b) = calculate_line(
-                transform_a.translation.truncate(),
-                transform_b.translation.truncate(),
-            );
-            line_transform.translation = position.extend(LINE_PRIORITY);
-            *path = ShapePath::build_as(&shapes::Line(local_a, local_b));
-        }
-    }
-}
-
-fn calculate_line(position_a: Vec2, position_b: Vec2) -> (Vec2, Vec2, Vec2) {
-    (
-        (position_a + position_b) / 2.0,
-        (position_a - position_b) / 2.0,
-        (position_b - position_a) / 2.0,
-    )
 }
