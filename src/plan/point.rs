@@ -49,7 +49,7 @@ pub struct PointBundle {
 }
 
 impl PointBundle {
-    pub fn new(lines: Vec<Entity>, assets: &PointAssets) -> Self {
+    pub fn new(assets: &PointAssets) -> Self {
         Self {
             material_mesh: ColorMesh2dBundle {
                 mesh: assets.mesh.clone().into(),
@@ -57,26 +57,12 @@ impl PointBundle {
                 transform: Transform::from_translation(Vec2::ZERO.extend(POINT_PRIORITY)),
                 ..default()
             },
-            point: Point::new(lines),
+            point: Point::default(),
         }
     }
-
-    pub fn empty(assets: &PointAssets) -> Self {
-        Self::new(vec![], assets)
-    }
-
-    pub fn from_line(line: Entity, assets: &PointAssets) -> Self {
-        Self::new(vec![line], assets)
-    }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Point {
     pub lines: Vec<Entity>,
-}
-
-impl Point {
-    pub fn new(lines: Vec<Entity>) -> Self {
-        Self { lines }
-    }
 }

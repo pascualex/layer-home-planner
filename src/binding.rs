@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
 use crate::{
-    action::{Action, ActionQueue},
+    action::{Action, ActionBundle, Cancelation},
     input::Hover,
-    plan::{PlanMode, TrackMode},
+    plan::{CancelationMode, PlanMode},
     AppSet,
 };
 
@@ -22,17 +22,18 @@ impl DefaultBindings {
         hover: &Hover,
         mouse_input: &Input<MouseButton>,
         keyboard_input: &Input<KeyCode>,
-    ) -> Vec<Action> {
+        commands: &mut Commands,
+    ) {
         if keyboard_input.just_pressed(KeyCode::E) {
-            vec![Action::Create]
-        } else if let Some(hover) = hover.point {
+            let entity = commands.spawn_empty().id();
+            commands.insert_resource(ActionBundle::new(vec![
+                Action::Create(entity),
+                Action::Track(entity, Cancelation::Destroy),
+            ]));
+        } else if let Some(hover_entity) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
-                vec![Action::Select(hover)]
-            } else {
-                vec![]
+                commands.insert_resource(ActionBundle::new(vec![Action::Select(hover_entity)]));
             }
-        } else {
-            vec![]
         }
     }
 }
@@ -43,30 +44,38 @@ impl SelectBindings {
     #[allow(clippy::collapsible_if)]
     #[allow(clippy::collapsible_else_if)]
     fn bind(
-        selection: Entity,
+        selection_entity: Entity,
         hover: &Hover,
         mouse_input: &Input<MouseButton>,
         keyboard_input: &Input<KeyCode>,
-    ) -> Vec<Action> {
+        commands: &mut Commands,
+    ) {
         if keyboard_input.just_pressed(KeyCode::G) {
-            vec![Action::Track(selection)]
+            commands.insert_resource(ActionBundle::new(vec![Action::Track(
+                selection_entity,
+                Cancelation::ReturnToOrigin,
+            )]));
         } else if keyboard_input.just_pressed(KeyCode::E) {
-            vec![Action::Extend(selection)]
+            let entity = commands.spawn_empty().id();
+            commands.insert_resource(ActionBundle::new(vec![
+                Action::Create(entity),
+                Action::Connect(selection_entity, entity),
+                Action::Track(entity, Cancelation::DestroyAndSelect(selection_entity)),
+            ]));
         } else if keyboard_input.just_pressed(KeyCode::Delete) {
-            vec![Action::Delete(selection)]
+            commands.insert_resource(ActionBundle::new(vec![
+                Action::Delete(selection_entity),
+                Action::Unselect,
+            ]));
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
-            vec![Action::Unselect]
+            commands.insert_resource(ActionBundle::new(vec![Action::Unselect]));
         } else if let Some(hover) = hover.point {
-            if mouse_input.just_pressed(MouseButton::Left) && hover != selection {
-                vec![Action::Select(hover)]
-            } else {
-                vec![]
+            if mouse_input.just_pressed(MouseButton::Left) && hover != selection_entity {
+                commands.insert_resource(ActionBundle::new(vec![Action::Select(hover)]));
             }
         } else {
             if mouse_input.just_pressed(MouseButton::Left) {
-                vec![Action::Unselect]
-            } else {
-                vec![]
+                commands.insert_resource(ActionBundle::new(vec![Action::Unselect]));
             }
         }
     }
@@ -78,30 +87,49 @@ impl TrackBindings {
     #[allow(clippy::collapsible_if)]
     #[allow(clippy::collapsible_else_if)]
     fn bind(
-        selection: Entity,
-        mode: TrackMode,
+        selection_entity: Entity,
+        mode: CancelationMode,
         hover: &Hover,
         mouse_input: &Input<MouseButton>,
         keyboard_input: &Input<KeyCode>,
-    ) -> Vec<Action> {
+        commands: &mut Commands,
+    ) {
         if keyboard_input.just_pressed(KeyCode::Delete) {
-            vec![Action::Delete(selection)]
+            commands.insert_resource(ActionBundle::new(vec![
+                Action::Delete(selection_entity),
+                Action::Unselect,
+            ]));
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
             match mode {
-                TrackMode::Move(old_position) => vec![Action::Move(selection, old_position)],
-                TrackMode::Place => vec![Action::Delete(selection)],
+                CancelationMode::Move(old_position) => {
+                    commands.insert_resource(ActionBundle::new(vec![
+                        Action::Move(selection_entity, old_position),
+                        Action::Select(selection_entity),
+                    ]));
+                }
+                CancelationMode::Destroy => {
+                    commands.insert_resource(ActionBundle::new(vec![
+                        Action::Delete(selection_entity),
+                        Action::Unselect,
+                    ]));
+                }
+                CancelationMode::DestroyAndSelect(old_entity) => {
+                    commands.insert_resource(ActionBundle::new(vec![
+                        Action::Delete(selection_entity),
+                        Action::Select(old_entity),
+                    ]));
+                }
             }
-        } else if let Some(hover) = hover.point {
+        } else if let Some(hover_entity) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
-                vec![Action::Merge(selection, hover)]
-            } else {
-                vec![]
+                commands.insert_resource(ActionBundle::new(vec![
+                    Action::Merge(selection_entity, hover_entity),
+                    Action::Select(hover_entity),
+                ]));
             }
         } else {
             if mouse_input.just_pressed(MouseButton::Left) {
-                vec![Action::Select(selection)]
-            } else {
-                vec![]
+                commands.insert_resource(ActionBundle::new(vec![Action::Select(selection_entity)]));
             }
         }
     }
@@ -112,18 +140,26 @@ fn process_bindings(
     hover: Res<Hover>,
     mouse_input: Res<Input<MouseButton>>,
     keyboard_input: Res<Input<KeyCode>>,
-    mut action_queue: ResMut<ActionQueue>,
+    mut commands: Commands,
 ) {
-    let actions = match *plan_mode {
-        PlanMode::Default => DefaultBindings::bind(&hover, &mouse_input, &keyboard_input),
-        PlanMode::Select(selection) => {
-            SelectBindings::bind(selection, &hover, &mouse_input, &keyboard_input)
+    match *plan_mode {
+        PlanMode::Default => {
+            DefaultBindings::bind(&hover, &mouse_input, &keyboard_input, &mut commands)
         }
-        PlanMode::Track(selection, track_mode) => {
-            TrackBindings::bind(selection, track_mode, &hover, &mouse_input, &keyboard_input)
-        }
+        PlanMode::Select(selection) => SelectBindings::bind(
+            selection,
+            &hover,
+            &mouse_input,
+            &keyboard_input,
+            &mut commands,
+        ),
+        PlanMode::Track(selection, track_mode) => TrackBindings::bind(
+            selection,
+            track_mode,
+            &hover,
+            &mouse_input,
+            &keyboard_input,
+            &mut commands,
+        ),
     };
-    for action in actions {
-        action_queue.push_back(action);
-    }
 }
