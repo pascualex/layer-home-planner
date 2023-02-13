@@ -11,4 +11,3 @@ opt-level = 3
 
 [dependencies]
 bevy = "0.9"
-bevy_prototype_lyon = "0.7"

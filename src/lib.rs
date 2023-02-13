@@ -2,6 +2,7 @@
 
 mod action;
 mod binding;
+mod consolidation;
 mod input;
 mod palette;
 mod plan;
@@ -10,19 +11,18 @@ mod ui;
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 
 use self::{
-    action::ActionPlugin, binding::BindingPlugin, input::InputPlugin, plan::PlanPlugin,
-    ui::UiPlugin,
+    action::ActionPlugin, binding::BindingPlugin, consolidation::ConsolidationPlugin,
+    input::InputPlugin, plan::PlanPlugin, ui::UiPlugin,
 };
 
 const VIEWPORT_SIZE: f32 = 10.0;
-const BASE_PRIORITY: f32 = 0.0;
 
 #[derive(StageLabel)]
 pub enum AppStage {
     Input,
     Binding,
     Action,
-    Plan,
+    Consolidation,
     Ui,
 }
 
@@ -30,33 +30,26 @@ pub struct AppPlugin;
 
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
-        app.add_stage_before(
-            CoreStage::Update,
-            AppStage::Input,
-            SystemStage::single_threaded(),
-        )
-        .add_stage_after(
-            AppStage::Input,
-            AppStage::Binding,
-            SystemStage::single_threaded(),
-        )
-        .add_stage_after(
-            AppStage::Binding,
-            AppStage::Action,
-            SystemStage::single_threaded(),
-        )
-        .add_stage_after(
-            AppStage::Action,
-            AppStage::Plan,
-            SystemStage::single_threaded(),
-        )
-        .add_stage_after(AppStage::Plan, AppStage::Ui, SystemStage::single_threaded())
-        .add_plugin(InputPlugin)
-        .add_plugin(BindingPlugin)
-        .add_plugin(ActionPlugin)
-        .add_plugin(PlanPlugin)
-        .add_plugin(UiPlugin)
-        .add_startup_system(setup);
+        app.add_stage_before(CoreStage::Update, AppStage::Input, SystemStage::parallel())
+            .add_stage_after(AppStage::Input, AppStage::Binding, SystemStage::parallel())
+            .add_stage_after(AppStage::Binding, AppStage::Action, SystemStage::parallel())
+            .add_stage_after(
+                AppStage::Action,
+                AppStage::Consolidation,
+                SystemStage::parallel(),
+            )
+            .add_stage_after(
+                AppStage::Consolidation,
+                AppStage::Ui,
+                SystemStage::parallel(),
+            )
+            .add_plugin(PlanPlugin)
+            .add_plugin(InputPlugin)
+            .add_plugin(BindingPlugin)
+            .add_plugin(ActionPlugin)
+            .add_plugin(ConsolidationPlugin)
+            .add_plugin(UiPlugin)
+            .add_startup_system(setup);
     }
 }
 
