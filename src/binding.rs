@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    action::BindedAction,
+    action::{Action, ActionQueue},
     input::Hover,
     plan::{PlanMode, TrackMode},
     AppSet,
@@ -22,17 +22,17 @@ impl DefaultBindings {
         hover: &Hover,
         mouse_input: &Input<MouseButton>,
         keyboard_input: &Input<KeyCode>,
-    ) -> BindedAction {
+    ) -> Vec<Action> {
         if keyboard_input.just_pressed(KeyCode::E) {
-            BindedAction::Create
+            vec![Action::Create]
         } else if let Some(hover) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
-                BindedAction::Select(hover)
+                vec![Action::Select(hover)]
             } else {
-                BindedAction::None
+                vec![]
             }
         } else {
-            BindedAction::None
+            vec![]
         }
     }
 }
@@ -47,26 +47,26 @@ impl SelectBindings {
         hover: &Hover,
         mouse_input: &Input<MouseButton>,
         keyboard_input: &Input<KeyCode>,
-    ) -> BindedAction {
+    ) -> Vec<Action> {
         if keyboard_input.just_pressed(KeyCode::G) {
-            BindedAction::Track(selection)
+            vec![Action::Track(selection)]
         } else if keyboard_input.just_pressed(KeyCode::E) {
-            BindedAction::Extend(selection)
+            vec![Action::Extend(selection)]
         } else if keyboard_input.just_pressed(KeyCode::Delete) {
-            BindedAction::Delete(selection)
+            vec![Action::Delete(selection)]
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
-            BindedAction::Unselect
+            vec![Action::Unselect]
         } else if let Some(hover) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) && hover != selection {
-                BindedAction::Select(hover)
+                vec![Action::Select(hover)]
             } else {
-                BindedAction::None
+                vec![]
             }
         } else {
             if mouse_input.just_pressed(MouseButton::Left) {
-                BindedAction::Unselect
+                vec![Action::Unselect]
             } else {
-                BindedAction::None
+                vec![]
             }
         }
     }
@@ -83,25 +83,25 @@ impl TrackBindings {
         hover: &Hover,
         mouse_input: &Input<MouseButton>,
         keyboard_input: &Input<KeyCode>,
-    ) -> BindedAction {
+    ) -> Vec<Action> {
         if keyboard_input.just_pressed(KeyCode::Delete) {
-            BindedAction::Delete(selection)
+            vec![Action::Delete(selection)]
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
             match mode {
-                TrackMode::Move(old_position) => BindedAction::Move(selection, old_position),
-                TrackMode::Place => BindedAction::Delete(selection),
+                TrackMode::Move(old_position) => vec![Action::Move(selection, old_position)],
+                TrackMode::Place => vec![Action::Delete(selection)],
             }
         } else if let Some(hover) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
-                BindedAction::Merge(selection, hover)
+                vec![Action::Merge(selection, hover)]
             } else {
-                BindedAction::None
+                vec![]
             }
         } else {
             if mouse_input.just_pressed(MouseButton::Left) {
-                BindedAction::Select(selection)
+                vec![Action::Select(selection)]
             } else {
-                BindedAction::None
+                vec![]
             }
         }
     }
@@ -112,9 +112,9 @@ fn process_bindings(
     hover: Res<Hover>,
     mouse_input: Res<Input<MouseButton>>,
     keyboard_input: Res<Input<KeyCode>>,
-    mut binded_action: ResMut<BindedAction>,
+    mut action_queue: ResMut<ActionQueue>,
 ) {
-    *binded_action = match *plan_mode {
+    let actions = match *plan_mode {
         PlanMode::Default => DefaultBindings::bind(&hover, &mouse_input, &keyboard_input),
         PlanMode::Select(selection) => {
             SelectBindings::bind(selection, &hover, &mouse_input, &keyboard_input)
@@ -122,5 +122,8 @@ fn process_bindings(
         PlanMode::Track(selection, track_mode) => {
             TrackBindings::bind(selection, track_mode, &hover, &mouse_input, &keyboard_input)
         }
+    };
+    for action in actions {
+        action_queue.push_back(action);
     }
 }
