@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 
 use crate::{
@@ -19,7 +21,8 @@ pub struct ActionPlugin;
 
 impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(process_actions.in_set(AppSet::Action))
+        app.init_resource::<ActionQueue>()
+            .add_system(process_actions.in_set(AppSet::Action))
             .init_schedule(ActionSchedule)
             .add_systems_to_schedule(
                 ActionSchedule,
@@ -39,14 +42,26 @@ impl Plugin for ActionPlugin {
     }
 }
 
-#[derive(Resource)]
-pub struct ActionBundle {
-    actions: Vec<Action>,
+#[derive(Resource, Default)]
+pub struct ActionQueue {
+    actions: VecDeque<Action>,
 }
 
-impl ActionBundle {
-    pub fn new(actions: Vec<Action>) -> Self {
-        Self { actions }
+impl ActionQueue {
+    // pub fn push_front(&mut self, actions: Vec<Action>) {
+    //     for action in actions.into_iter().rev() {
+    //         self.actions.push_front(action);
+    //     }
+    // }
+
+    pub fn push_back(&mut self, actions: Vec<Action>) {
+        for action in actions {
+            self.actions.push_back(action);
+        }
+    }
+
+    fn pop(&mut self) -> Option<Action> {
+        self.actions.pop_front()
     }
 }
 
@@ -55,14 +70,14 @@ struct CurrentAction(Action);
 
 #[derive(Clone, Copy)]
 pub enum Action {
-    Connect(Entity, Entity),
-    Create(Entity),
-    Delete(Entity),
-    Merge(Entity, Entity),
-    Move(Entity, Vec2),
-    Select(Entity),
-    Track(Entity, TrackReason),
-    Unselect,
+    CreateLine(Entity, Entity),
+    CreatePoint(Entity),
+    DeletePoint(Entity),
+    TransferLines(Entity, Entity),
+    MovePoint(Entity, Vec2),
+    SelectPoint(Entity),
+    TrackPoint(Entity, TrackReason),
+    UnselectPoint,
 }
 
 #[derive(Clone, Copy)]
@@ -73,13 +88,13 @@ pub enum TrackReason {
 }
 
 fn process_actions(world: &mut World) {
-    if let Some(action_bundle) = world.remove_resource::<ActionBundle>() {
-        for &action in &action_bundle.actions {
+    world.resource_scope(|world, mut action_queue: Mut<ActionQueue>| {
+        while let Some(action) = action_queue.pop() {
             world.insert_resource(CurrentAction(action));
             world.run_schedule(ActionSchedule);
             world.remove_resource::<CurrentAction>();
         }
-    }
+    });
 }
 
 fn handle_connect_action(
@@ -88,7 +103,7 @@ fn handle_connect_action(
     assets: Res<LineAssets>,
     mut commands: Commands,
 ) {
-    if let Action::Connect(point_a_entity, point_b_entity) = **action {
+    if let Action::CreateLine(point_a_entity, point_b_entity) = **action {
         let line_entity = commands
             .spawn(LineBundle::new(point_a_entity, point_b_entity, &assets))
             .id();
@@ -104,7 +119,7 @@ fn handle_create_action(
     assets: Res<PointAssets>,
     mut commands: Commands,
 ) {
-    if let Action::Create(entity) = **action {
+    if let Action::CreatePoint(entity) = **action {
         commands.entity(entity).insert(PointBundle::new(&assets));
     }
 }
@@ -115,7 +130,7 @@ fn handle_delete_action(
     line_query: Query<&Line>,
     mut commands: Commands,
 ) {
-    if let Action::Delete(point_entity) = **action {
+    if let Action::DeletePoint(point_entity) = **action {
         let point = point_query.get(point_entity).unwrap();
         let lines_entities = point.lines.clone();
         for line_entity in lines_entities {
@@ -136,21 +151,32 @@ fn handle_merge_action(
     mut line_query: Query<&mut Line>,
     mut commands: Commands,
 ) {
-    if let Action::Merge(old_point_entity, new_point_entity) = **action {
+    if let Action::TransferLines(old_point_entity, new_point_entity) = **action {
         let old_point = point_query.get(old_point_entity).unwrap();
-        let lines_entities = old_point.lines.clone();
+        let old_lines_entities = old_point.lines.clone();
         let mut new_point = point_query.get_mut(new_point_entity).unwrap();
-        for line_entity in lines_entities {
+        let new_lines_entities = &mut new_point.lines;
+        for line_entity in old_lines_entities {
             let mut line = line_query.get_mut(line_entity).unwrap();
-            line.replace(old_point_entity, new_point_entity);
-            new_point.lines.push(line_entity);
+            if line.other(old_point_entity).unwrap() == new_point_entity {
+                new_lines_entities.remove(
+                    new_lines_entities
+                        .iter()
+                        .position(|e| *e == line_entity)
+                        .unwrap(),
+                );
+                commands.entity(line_entity).despawn();
+            } else {
+                line.replace(old_point_entity, new_point_entity);
+                new_lines_entities.push(line_entity);
+            }
         }
         commands.entity(old_point_entity).despawn();
     }
 }
 
 fn handle_move_action(action: Res<CurrentAction>, mut query: Query<&mut Transform, With<Point>>) {
-    if let Action::Move(entity, position) = **action {
+    if let Action::MovePoint(entity, position) = **action {
         let mut transform = query.get_mut(entity).unwrap();
         transform.translation.x = position.x;
         transform.translation.y = position.y;
@@ -158,7 +184,7 @@ fn handle_move_action(action: Res<CurrentAction>, mut query: Query<&mut Transfor
 }
 
 fn handle_select_action(action: Res<CurrentAction>, mut mode: ResMut<PlanMode>) {
-    if let Action::Select(entity) = **action {
+    if let Action::SelectPoint(entity) = **action {
         *mode = PlanMode::Select(entity);
     }
 }
@@ -168,7 +194,7 @@ fn handle_track_action(
     query: Query<&Transform, With<Point>>,
     mut mode: ResMut<PlanMode>,
 ) {
-    if let Action::Track(entity, cancelation) = **action {
+    if let Action::TrackPoint(entity, cancelation) = **action {
         let cancelation_mode = match cancelation {
             TrackReason::Move => {
                 let transform = query.get(entity).unwrap();
@@ -183,7 +209,7 @@ fn handle_track_action(
 }
 
 fn handle_unselect_action(action: Res<CurrentAction>, mut mode: ResMut<PlanMode>) {
-    if let Action::Unselect = **action {
+    if let Action::UnselectPoint = **action {
         *mode = PlanMode::Default;
     }
 }
