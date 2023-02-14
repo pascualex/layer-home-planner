@@ -68,3 +68,10 @@ impl PointBundle {
 pub struct Point {
     pub lines: Vec<Entity>,
 }
+
+impl Point {
+    pub fn remove_line(&mut self, line: Entity) {
+        let index = self.lines.iter().position(|&l| l == line).unwrap();
+        self.lines.remove(index);
+    }
+}

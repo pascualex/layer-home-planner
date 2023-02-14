@@ -27,7 +27,7 @@ pub enum PlanMode {
     #[default]
     Default,
     Select(Entity),
-    Track(Entity, CancelationMode),
+    Track(Entity, TrackModeCancelation),
 }
 
 impl PlanMode {
@@ -41,7 +41,7 @@ impl PlanMode {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum CancelationMode {
+pub enum TrackModeCancelation {
     Move(Vec2),
     Destroy,
     DestroyAndSelect(Entity),

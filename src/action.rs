@@ -6,7 +6,7 @@ use crate::{
     plan::{
         line::{Line, LineAssets, LineBundle},
         point::{Point, PointAssets, PointBundle},
-        CancelationMode, PlanMode,
+        PlanMode, TrackModeCancelation,
     },
     AppSet,
 };
@@ -29,11 +29,12 @@ impl Plugin for ActionPlugin {
                 (
                     handle_create_action,
                     handle_delete_action,
+                    handle_disconnect_action,
                     handle_connect_action,
-                    handle_merge_action,
                     handle_move_action,
                     handle_select_action,
                     handle_track_action,
+                    handle_transfer_action,
                     handle_unselect_action,
                 )
                     .in_set(ActionSet),
@@ -48,11 +49,9 @@ pub struct ActionQueue {
 }
 
 impl ActionQueue {
-    // pub fn push_front(&mut self, actions: Vec<Action>) {
-    //     for action in actions.into_iter().rev() {
-    //         self.actions.push_front(action);
-    //     }
-    // }
+    pub fn push_front(&mut self, action: Action) {
+        self.actions.push_front(action);
+    }
 
     pub fn push_back(&mut self, actions: Vec<Action>) {
         for action in actions {
@@ -70,31 +69,30 @@ struct CurrentAction(Action);
 
 #[derive(Clone, Copy)]
 pub enum Action {
-    CreateLine(Entity, Entity),
-    CreatePoint(Entity),
-    DeletePoint(Entity),
-    TransferLines(Entity, Entity),
-    MovePoint(Entity, Vec2),
-    SelectPoint(Entity),
-    TrackPoint(Entity, TrackReason),
-    UnselectPoint,
+    Connect(Entity, Entity),
+    Create(Entity),
+    Delete(Entity),
+    Disconnect(Entity),
+    Transfer(Entity, Entity),
+    Move(Entity, Vec2),
+    Select(Entity),
+    Track(Entity, TrackCancelation),
+    Unselect,
 }
 
 #[derive(Clone, Copy)]
-pub enum TrackReason {
-    Move,
-    Create,
-    Extend(Entity),
+pub enum TrackCancelation {
+    RestorePosition,
+    Destroy,
+    DestroyAndSelect(Entity),
 }
 
 fn process_actions(world: &mut World) {
-    world.resource_scope(|world, mut action_queue: Mut<ActionQueue>| {
-        while let Some(action) = action_queue.pop() {
-            world.insert_resource(CurrentAction(action));
-            world.run_schedule(ActionSchedule);
-            world.remove_resource::<CurrentAction>();
-        }
-    });
+    while let Some(action) = world.resource_mut::<ActionQueue>().pop() {
+        world.insert_resource(CurrentAction(action));
+        world.run_schedule(ActionSchedule);
+        world.remove_resource::<CurrentAction>();
+    }
 }
 
 fn handle_connect_action(
@@ -103,7 +101,7 @@ fn handle_connect_action(
     assets: Res<LineAssets>,
     mut commands: Commands,
 ) {
-    if let Action::CreateLine(point_a_entity, point_b_entity) = **action {
+    if let Action::Connect(point_a_entity, point_b_entity) = **action {
         let line_entity = commands
             .spawn(LineBundle::new(point_a_entity, point_b_entity, &assets))
             .id();
@@ -119,64 +117,46 @@ fn handle_create_action(
     assets: Res<PointAssets>,
     mut commands: Commands,
 ) {
-    if let Action::CreatePoint(entity) = **action {
+    if let Action::Create(entity) = **action {
         commands.entity(entity).insert(PointBundle::new(&assets));
     }
 }
 
 fn handle_delete_action(
     action: Res<CurrentAction>,
-    mut point_query: Query<&mut Point>,
-    line_query: Query<&Line>,
+    query: Query<&Point>,
+    mut action_queue: ResMut<ActionQueue>,
     mut commands: Commands,
 ) {
-    if let Action::DeletePoint(point_entity) = **action {
-        let point = point_query.get(point_entity).unwrap();
-        let lines_entities = point.lines.clone();
-        for line_entity in lines_entities {
-            let line = line_query.get(line_entity).unwrap();
-            let other_point_entity = line.other(point_entity).unwrap();
-            let mut other_point = point_query.get_mut(other_point_entity).unwrap();
-            let lines = &mut other_point.lines;
-            lines.remove(lines.iter().position(|e| *e == line_entity).unwrap());
-            commands.entity(line_entity).despawn();
+    if let Action::Delete(point_entity) = **action {
+        let point = query.get(point_entity).unwrap();
+        for &line_entity in &point.lines {
+            action_queue.push_front(Action::Disconnect(line_entity));
         }
         commands.entity(point_entity).despawn();
     }
 }
 
-fn handle_merge_action(
+fn handle_disconnect_action(
     action: Res<CurrentAction>,
+    line_query: Query<&Line>,
     mut point_query: Query<&mut Point>,
-    mut line_query: Query<&mut Line>,
     mut commands: Commands,
 ) {
-    if let Action::TransferLines(old_point_entity, new_point_entity) = **action {
-        let old_point = point_query.get(old_point_entity).unwrap();
-        let old_lines_entities = old_point.lines.clone();
-        let mut new_point = point_query.get_mut(new_point_entity).unwrap();
-        let new_lines_entities = &mut new_point.lines;
-        for line_entity in old_lines_entities {
-            let mut line = line_query.get_mut(line_entity).unwrap();
-            if line.other(old_point_entity).unwrap() == new_point_entity {
-                new_lines_entities.remove(
-                    new_lines_entities
-                        .iter()
-                        .position(|e| *e == line_entity)
-                        .unwrap(),
-                );
-                commands.entity(line_entity).despawn();
-            } else {
-                line.replace(old_point_entity, new_point_entity);
-                new_lines_entities.push(line_entity);
-            }
+    if let Action::Disconnect(line_entity) = **action {
+        let line = line_query.get(line_entity).unwrap();
+        if let Ok(mut point_a) = point_query.get_mut(line.point_a) {
+            point_a.remove_line(line_entity);
         }
-        commands.entity(old_point_entity).despawn();
+        if let Ok(mut point_b) = point_query.get_mut(line.point_b) {
+            point_b.remove_line(line_entity);
+        }
+        commands.entity(line_entity).despawn();
     }
 }
 
 fn handle_move_action(action: Res<CurrentAction>, mut query: Query<&mut Transform, With<Point>>) {
-    if let Action::MovePoint(entity, position) = **action {
+    if let Action::Move(entity, position) = **action {
         let mut transform = query.get_mut(entity).unwrap();
         transform.translation.x = position.x;
         transform.translation.y = position.y;
@@ -184,7 +164,7 @@ fn handle_move_action(action: Res<CurrentAction>, mut query: Query<&mut Transfor
 }
 
 fn handle_select_action(action: Res<CurrentAction>, mut mode: ResMut<PlanMode>) {
-    if let Action::SelectPoint(entity) = **action {
+    if let Action::Select(entity) = **action {
         *mode = PlanMode::Select(entity);
     }
 }
@@ -194,22 +174,54 @@ fn handle_track_action(
     query: Query<&Transform, With<Point>>,
     mut mode: ResMut<PlanMode>,
 ) {
-    if let Action::TrackPoint(entity, cancelation) = **action {
+    if let Action::Track(entity, cancelation) = **action {
         let cancelation_mode = match cancelation {
-            TrackReason::Move => {
+            TrackCancelation::RestorePosition => {
                 let transform = query.get(entity).unwrap();
                 let position = transform.translation.truncate();
-                CancelationMode::Move(position)
+                TrackModeCancelation::Move(position)
             }
-            TrackReason::Create => CancelationMode::Destroy,
-            TrackReason::Extend(entity) => CancelationMode::DestroyAndSelect(entity),
+            TrackCancelation::Destroy => TrackModeCancelation::Destroy,
+            TrackCancelation::DestroyAndSelect(entity) => {
+                TrackModeCancelation::DestroyAndSelect(entity)
+            }
         };
         *mode = PlanMode::Track(entity, cancelation_mode)
     }
 }
 
+fn handle_transfer_action(
+    action: Res<CurrentAction>,
+    point_query: Query<&Point>,
+    line_query: Query<&Line>,
+    mut action_queue: ResMut<ActionQueue>,
+) {
+    if let Action::Transfer(old_point_entity, new_point_entity) = **action {
+        let old_point = point_query.get(old_point_entity).unwrap();
+        let new_point = point_query.get(new_point_entity).unwrap();
+        let new_point_neighbours: Vec<_> = new_point
+            .lines
+            .iter()
+            .map(|&line_entity| {
+                let line = line_query.get(line_entity).unwrap();
+                line.other(new_point_entity).unwrap()
+            })
+            .collect();
+        for &line_entity in &old_point.lines {
+            let line = line_query.get(line_entity).unwrap();
+            let other_point_entity = line.other(old_point_entity).unwrap();
+            action_queue.push_front(Action::Disconnect(line_entity));
+            if other_point_entity != new_point_entity
+                && !new_point_neighbours.contains(&other_point_entity)
+            {
+                action_queue.push_front(Action::Connect(other_point_entity, new_point_entity));
+            }
+        }
+    }
+}
+
 fn handle_unselect_action(action: Res<CurrentAction>, mut mode: ResMut<PlanMode>) {
-    if let Action::UnselectPoint = **action {
+    if let Action::Unselect = **action {
         *mode = PlanMode::Default;
     }
 }

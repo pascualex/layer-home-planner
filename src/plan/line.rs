@@ -107,12 +107,4 @@ impl Line {
             None
         }
     }
-
-    pub fn replace(&mut self, old: Entity, new: Entity) {
-        if old == self.point_a {
-            self.point_a = new;
-        } else if old == self.point_b {
-            self.point_b = new;
-        }
-    }
 }
