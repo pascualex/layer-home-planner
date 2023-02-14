@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     palette,
-    plan::{point::Point, PlanMode},
+    plan::{line::Line, point::Point, PlanMode},
     AppSet,
 };
 
@@ -11,8 +11,15 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<UiAssets>()
-            .add_startup_system(spawn_inspector_panel)
-            .add_system(update_inspector_text.in_set(AppSet::Ui));
+            .add_startup_systems((spawn_coordinates_panel, spawn_counters_panel))
+            .add_systems(
+                (
+                    update_coordinates_text,
+                    update_point_counter_text,
+                    update_line_counter_text,
+                )
+                    .in_set(AppSet::Ui),
+            );
     }
 }
 
@@ -22,7 +29,13 @@ struct UiAssets {
 }
 
 #[derive(Component)]
-struct InspectorText;
+struct CoordinatesText;
+
+#[derive(Component)]
+struct PointCounterText;
+
+#[derive(Component)]
+struct LineCounterText;
 
 impl FromWorld for UiAssets {
     fn from_world(world: &mut World) -> Self {
@@ -33,7 +46,7 @@ impl FromWorld for UiAssets {
     }
 }
 
-fn spawn_inspector_panel(assets: Res<UiAssets>, mut commands: Commands) {
+fn spawn_coordinates_panel(assets: Res<UiAssets>, mut commands: Commands) {
     let root = NodeBundle {
         style: Style {
             position_type: PositionType::Absolute,
@@ -42,10 +55,10 @@ fn spawn_inspector_panel(assets: Res<UiAssets>, mut commands: Commands) {
         },
         ..default()
     };
-    let text = (
+    let coordinates_text = (
         TextBundle {
             text: Text::from_section(
-                "Uninitialized",
+                "Uninitialized coordinates",
                 TextStyle {
                     font: assets.font.clone(),
                     font_size: 30.0,
@@ -54,17 +67,62 @@ fn spawn_inspector_panel(assets: Res<UiAssets>, mut commands: Commands) {
             ),
             ..default()
         },
-        InspectorText,
+        CoordinatesText,
     );
     commands.spawn(root).with_children(|builder| {
-        builder.spawn(text);
+        builder.spawn(coordinates_text);
     });
 }
 
-fn update_inspector_text(
+fn spawn_counters_panel(assets: Res<UiAssets>, mut commands: Commands) {
+    let root = NodeBundle {
+        style: Style {
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::FlexEnd,
+            position_type: PositionType::Absolute,
+            position: UiRect::new(Val::Auto, Val::Px(40.0), Val::Auto, Val::Px(40.0)),
+            ..default()
+        },
+        ..default()
+    };
+    let point_counter_text = (
+        TextBundle {
+            text: Text::from_section(
+                "Uninitialized point counter",
+                TextStyle {
+                    font: assets.font.clone(),
+                    font_size: 30.0,
+                    color: palette::LIGHT_WHITE,
+                },
+            ),
+            ..default()
+        },
+        PointCounterText,
+    );
+    let line_counter_text = (
+        TextBundle {
+            text: Text::from_section(
+                "Uninitialized line counter",
+                TextStyle {
+                    font: assets.font.clone(),
+                    font_size: 30.0,
+                    color: palette::LIGHT_WHITE,
+                },
+            ),
+            ..default()
+        },
+        LineCounterText,
+    );
+    commands.spawn(root).with_children(|builder| {
+        builder.spawn(point_counter_text);
+        builder.spawn(line_counter_text);
+    });
+}
+
+fn update_coordinates_text(
     mode: Res<PlanMode>,
     point_query: Query<&Transform, With<Point>>,
-    mut text_query: Query<&mut Text, With<InspectorText>>,
+    mut text_query: Query<&mut Text, With<CoordinatesText>>,
 ) {
     let mut text = text_query.single_mut();
     if let Some(entity) = mode.selection() {
@@ -85,4 +143,22 @@ fn update_inspector_text(
     } else {
         text.sections[0].value = "Nothing selected".to_string();
     }
+}
+
+fn update_point_counter_text(
+    point_query: Query<(), With<Point>>,
+    mut text_query: Query<&mut Text, With<PointCounterText>>,
+) {
+    let mut text = text_query.single_mut();
+    let count = point_query.iter().len();
+    text.sections[0].value = format!("Points: {count}");
+}
+
+fn update_line_counter_text(
+    line_query: Query<(), With<Line>>,
+    mut text_query: Query<&mut Text, With<LineCounterText>>,
+) {
+    let mut text = text_query.single_mut();
+    let count = line_query.iter().len();
+    text.sections[0].value = format!("Lines: {count}");
 }
