@@ -97,17 +97,31 @@ fn process_actions(world: &mut World) {
 
 fn handle_connect_action(
     action: Res<CurrentAction>,
-    mut query: Query<&mut Point>,
+    mut point_query: Query<&mut Point>,
+    line_query: Query<&Line>,
     assets: Res<LineAssets>,
     mut commands: Commands,
 ) {
     if let Action::Connect(point_a_entity, point_b_entity) = **action {
+        // val 1: point isn't connected to self
+        if point_a_entity == point_b_entity {
+            return;
+        }
+        // val 2: points aren't already connected
+        let point_a = point_query.get(point_a_entity).unwrap();
+        for &line_entity in &point_a.lines {
+            let line = line_query.get(line_entity).unwrap();
+            if line.other(point_a_entity).unwrap() == point_b_entity {
+                return;
+            }
+        }
+        // action
         let line_entity = commands
             .spawn(LineBundle::new(point_a_entity, point_b_entity, &assets))
             .id();
-        let mut point_a = query.get_mut(point_a_entity).unwrap();
+        let mut point_a = point_query.get_mut(point_a_entity).unwrap();
         point_a.lines.push(line_entity);
-        let mut point_b = query.get_mut(point_b_entity).unwrap();
+        let mut point_b = point_query.get_mut(point_b_entity).unwrap();
         point_b.lines.push(line_entity);
     }
 }
@@ -198,24 +212,11 @@ fn handle_transfer_action(
 ) {
     if let Action::Transfer(old_point_entity, new_point_entity) = **action {
         let old_point = point_query.get(old_point_entity).unwrap();
-        let new_point = point_query.get(new_point_entity).unwrap();
-        let new_point_neighbours: Vec<_> = new_point
-            .lines
-            .iter()
-            .map(|&line_entity| {
-                let line = line_query.get(line_entity).unwrap();
-                line.other(new_point_entity).unwrap()
-            })
-            .collect();
         for &line_entity in &old_point.lines {
             let line = line_query.get(line_entity).unwrap();
             let other_point_entity = line.other(old_point_entity).unwrap();
+            action_queue.push_front(Action::Connect(other_point_entity, new_point_entity));
             action_queue.push_front(Action::Disconnect(line_entity));
-            if other_point_entity != new_point_entity
-                && !new_point_neighbours.contains(&other_point_entity)
-            {
-                action_queue.push_front(Action::Connect(other_point_entity, new_point_entity));
-            }
         }
     }
 }
