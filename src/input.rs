@@ -95,17 +95,26 @@ fn update_hover(
     let Some(cursor_position) = cursor.position else {
         return;
     };
-    let radius_squared = POINT_RADIUS * POINT_RADIUS;
     let tracked_entity = match *mode {
         PlanMode::Track(entity, _) => Some(entity),
         _ => None,
     };
     hover.point = query
         .iter()
+        // don't hover the tracked point
         .filter(|(entity, _)| Some(*entity) != tracked_entity)
-        .find(|(_, transform)| {
+        // calculate distances from cursor
+        .map(|(entity, transform)| {
             let position = transform.translation.truncate();
-            Vec2::distance_squared(position, cursor_position) <= radius_squared
+            (entity, Vec2::distance(position, cursor_position))
+        })
+        // filter minimum distance from cursor
+        .filter(|(_, distance)| *distance <= 2.0 * POINT_RADIUS)
+        // get closest point
+        .min_by(|(_, distance_a), (_, distance_b)| {
+            distance_a
+                .partial_cmp(distance_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
         })
         .map(|(entity, _)| entity);
 }
