@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    action::{Action, ActionBundle, Cancelation},
+    action::{Action, ActionBundle, TrackReason},
     input::Hover,
     plan::{CancelationMode, PlanMode},
     AppSet,
@@ -28,7 +28,7 @@ impl DefaultBindings {
             let entity = commands.spawn_empty().id();
             commands.insert_resource(ActionBundle::new(vec![
                 Action::Create(entity),
-                Action::Track(entity, Cancelation::Destroy),
+                Action::Track(entity, TrackReason::Create),
             ]));
         } else if let Some(hover_entity) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
@@ -53,14 +53,14 @@ impl SelectBindings {
         if keyboard_input.just_pressed(KeyCode::G) {
             commands.insert_resource(ActionBundle::new(vec![Action::Track(
                 selection_entity,
-                Cancelation::ReturnToOrigin,
+                TrackReason::Move,
             )]));
         } else if keyboard_input.just_pressed(KeyCode::E) {
             let entity = commands.spawn_empty().id();
             commands.insert_resource(ActionBundle::new(vec![
                 Action::Create(entity),
                 Action::Connect(selection_entity, entity),
-                Action::Track(entity, Cancelation::DestroyAndSelect(selection_entity)),
+                Action::Track(entity, TrackReason::Extend(selection_entity)),
             ]));
         } else if keyboard_input.just_pressed(KeyCode::Delete) {
             commands.insert_resource(ActionBundle::new(vec![
@@ -88,7 +88,7 @@ impl TrackBindings {
     #[allow(clippy::collapsible_else_if)]
     fn bind(
         selection_entity: Entity,
-        mode: CancelationMode,
+        cancelation_mode: CancelationMode,
         hover: &Hover,
         mouse_input: &Input<MouseButton>,
         keyboard_input: &Input<KeyCode>,
@@ -100,7 +100,7 @@ impl TrackBindings {
                 Action::Unselect,
             ]));
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
-            match mode {
+            match cancelation_mode {
                 CancelationMode::Move(old_position) => {
                     commands.insert_resource(ActionBundle::new(vec![
                         Action::Move(selection_entity, old_position),
@@ -153,9 +153,9 @@ fn process_bindings(
             &keyboard_input,
             &mut commands,
         ),
-        PlanMode::Track(selection, track_mode) => TrackBindings::bind(
+        PlanMode::Track(selection, cancelation_mode) => TrackBindings::bind(
             selection,
-            track_mode,
+            cancelation_mode,
             &hover,
             &mouse_input,
             &keyboard_input,

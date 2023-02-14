@@ -61,15 +61,15 @@ pub enum Action {
     Merge(Entity, Entity),
     Move(Entity, Vec2),
     Select(Entity),
-    Track(Entity, Cancelation),
+    Track(Entity, TrackReason),
     Unselect,
 }
 
 #[derive(Clone, Copy)]
-pub enum Cancelation {
-    ReturnToOrigin,
-    Destroy,
-    DestroyAndSelect(Entity),
+pub enum TrackReason {
+    Move,
+    Create,
+    Extend(Entity),
 }
 
 fn process_actions(world: &mut World) {
@@ -170,13 +170,13 @@ fn handle_track_action(
 ) {
     if let Action::Track(entity, cancelation) = **action {
         let cancelation_mode = match cancelation {
-            Cancelation::ReturnToOrigin => {
+            TrackReason::Move => {
                 let transform = query.get(entity).unwrap();
                 let position = transform.translation.truncate();
                 CancelationMode::Move(position)
             }
-            Cancelation::Destroy => CancelationMode::Destroy,
-            Cancelation::DestroyAndSelect(entity) => CancelationMode::DestroyAndSelect(entity),
+            TrackReason::Create => CancelationMode::Destroy,
+            TrackReason::Extend(entity) => CancelationMode::DestroyAndSelect(entity),
         };
         *mode = PlanMode::Track(entity, cancelation_mode)
     }
