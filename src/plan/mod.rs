@@ -8,7 +8,7 @@ use crate::palette;
 use self::{line::LinePlugin, point::PointPlugin};
 
 const BASE_PRIORITY: f32 = 0.0;
-const DEFAULT_COLOR: Color = palette::LIGHT_WHITE;
+const STANDARD_COLOR: Color = palette::LIGHT_WHITE;
 const HOVERED_COLOR: Color = palette::LIGHT_GREEN;
 const SELECTED_COLOR: Color = palette::LIGHT_BLUE;
 

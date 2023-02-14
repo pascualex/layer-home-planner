@@ -3,7 +3,7 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
 
-use crate::plan::{BASE_PRIORITY, DEFAULT_COLOR};
+use crate::plan::{BASE_PRIORITY, STANDARD_COLOR};
 
 pub const LINE_WIDTH: f32 = 0.02;
 pub const LINE_PRIORITY: f32 = BASE_PRIORITY + 1.0;
@@ -25,7 +25,7 @@ impl FromWorld for LineAssets {
     fn from_world(world: &mut World) -> Self {
         let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
         Self {
-            material: materials.add(DEFAULT_COLOR.into()),
+            material: materials.add(STANDARD_COLOR.into()),
         }
     }
 }

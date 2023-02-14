@@ -1,10 +1,12 @@
 use bevy::prelude::*;
 
-use crate::plan::{line::LINE_PRIORITY, DEFAULT_COLOR, HOVERED_COLOR, SELECTED_COLOR};
+use crate::plan::{line::LINE_PRIORITY, HOVERED_COLOR, SELECTED_COLOR, STANDARD_COLOR};
 
 pub const POINT_RADIUS: f32 = 0.06;
 pub const POINT_VERTICES: usize = 16;
-const POINT_PRIORITY: f32 = LINE_PRIORITY + 1.0;
+pub const STANDARD_POINT_PRIORITY: f32 = LINE_PRIORITY + 1.0;
+pub const HOVERED_POINT_PRIORITY: f32 = STANDARD_POINT_PRIORITY + 0.1;
+pub const SELECTED_POINT_PRIORITY: f32 = HOVERED_POINT_PRIORITY + 0.1;
 
 pub struct PointPlugin;
 
@@ -17,7 +19,7 @@ impl Plugin for PointPlugin {
 #[derive(Resource)]
 pub struct PointAssets {
     mesh: Handle<Mesh>,
-    pub default_material: Handle<ColorMaterial>,
+    pub standard_material: Handle<ColorMaterial>,
     pub hovered_material: Handle<ColorMaterial>,
     pub selected_material: Handle<ColorMaterial>,
 }
@@ -34,7 +36,7 @@ impl FromWorld for PointAssets {
                     }
                     .into(),
                 ),
-                default_material: materials.add(DEFAULT_COLOR.into()),
+                standard_material: materials.add(STANDARD_COLOR.into()),
                 hovered_material: materials.add(HOVERED_COLOR.into()),
                 selected_material: materials.add(SELECTED_COLOR.into()),
             }
@@ -53,8 +55,8 @@ impl PointBundle {
         Self {
             material_mesh: ColorMesh2dBundle {
                 mesh: assets.mesh.clone().into(),
-                material: assets.default_material.clone(),
-                transform: Transform::from_translation(Vec2::ZERO.extend(POINT_PRIORITY)),
+                material: assets.standard_material.clone(),
+                transform: Transform::from_translation(Vec2::ZERO.extend(STANDARD_POINT_PRIORITY)),
                 ..default()
             },
             point: Point::default(),

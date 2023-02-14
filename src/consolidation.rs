@@ -4,7 +4,10 @@ use crate::{
     input::{Cursor, Hover},
     plan::{
         line::{Line, LineShape, LINE_WIDTH},
-        point::{Point, PointAssets},
+        point::{
+            Point, PointAssets, HOVERED_POINT_PRIORITY, SELECTED_POINT_PRIORITY,
+            STANDARD_POINT_PRIORITY,
+        },
         PlanMode,
     },
     AppSet,
@@ -42,17 +45,19 @@ fn track_cursor_with_selection(
 fn highlight_points(
     mode: Res<PlanMode>,
     hover: Res<Hover>,
-    mut query: Query<(Entity, &mut Handle<ColorMaterial>), With<Point>>,
+    mut query: Query<(Entity, &mut Transform, &mut Handle<ColorMaterial>), With<Point>>,
     assets: Res<PointAssets>,
 ) {
-    for (entity, mut material) in &mut query {
-        *material = if Some(entity) == mode.selection() {
-            assets.selected_material.clone()
+    for (entity, mut transform, mut material) in &mut query {
+        let (mode_material, mode_priority) = if Some(entity) == mode.selection() {
+            (&assets.selected_material, SELECTED_POINT_PRIORITY)
         } else if Some(entity) == hover.point {
-            assets.hovered_material.clone()
+            (&assets.hovered_material, HOVERED_POINT_PRIORITY)
         } else {
-            assets.default_material.clone()
+            (&assets.standard_material, STANDARD_POINT_PRIORITY)
         };
+        transform.translation.z = mode_priority;
+        *material = mode_material.clone();
     }
 }
 
