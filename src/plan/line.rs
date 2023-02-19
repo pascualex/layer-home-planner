@@ -30,6 +30,37 @@ impl FromWorld for LineAssets {
     }
 }
 
+#[derive(Bundle)]
+pub struct LineBundle {
+    material_mesh: ColorMesh2dBundle,
+    line: Line,
+}
+
+impl LineBundle {
+    pub fn new(blueprint: LineBlueprint, assets: &LineAssets) -> Self {
+        Self {
+            material_mesh: ColorMesh2dBundle {
+                material: assets.material.clone(),
+                transform: Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
+                ..default()
+            },
+            line: Line::new(blueprint.point_a, blueprint.point_b),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LineBlueprint {
+    pub point_a: Entity,
+    pub point_b: Entity,
+}
+
+impl LineBlueprint {
+    pub fn new(point_a: Entity, point_b: Entity) -> Self {
+        Self { point_a, point_b }
+    }
+}
+
 pub struct LineShape {
     pub point_a: Vec2,
     pub point_b: Vec2,
@@ -68,25 +99,6 @@ impl From<LineShape> for Mesh {
     }
 }
 
-#[derive(Bundle)]
-pub struct LineBundle {
-    material_mesh: ColorMesh2dBundle,
-    line: Line,
-}
-
-impl LineBundle {
-    pub fn new(point_a: Entity, point_b: Entity, assets: &LineAssets) -> Self {
-        Self {
-            material_mesh: ColorMesh2dBundle {
-                material: assets.material.clone(),
-                transform: Transform::from_translation(Vec2::ZERO.extend(LINE_PRIORITY)),
-                ..default()
-            },
-            line: Line::new(point_a, point_b),
-        }
-    }
-}
-
 #[derive(Component)]
 pub struct Line {
     pub point_a: Entity,
@@ -98,7 +110,7 @@ impl Line {
         Self { point_a, point_b }
     }
 
-    pub fn other(&self, point: Entity) -> Option<Entity> {
+    pub fn neighbour(&self, point: Entity) -> Option<Entity> {
         if point == self.point_a {
             Some(self.point_b)
         } else if point == self.point_b {

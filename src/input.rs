@@ -96,7 +96,7 @@ fn update_hover(
         return;
     };
     let tracked_entity = match *mode {
-        PlanMode::Track(entity, _) => Some(entity),
+        PlanMode::Track(entity) => Some(entity),
         _ => None,
     };
     hover.point = query

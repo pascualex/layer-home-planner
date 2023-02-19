@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
-mod action;
 mod binding;
+mod command;
 mod consolidation;
 mod input;
 mod palette;
@@ -11,7 +11,7 @@ mod ui;
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 
 use self::{
-    action::ActionPlugin, binding::BindingPlugin, consolidation::ConsolidationPlugin,
+    binding::BindingPlugin, command::CommandPlugin, consolidation::ConsolidationPlugin,
     input::InputPlugin, plan::PlanPlugin, ui::UiPlugin,
 };
 
@@ -43,7 +43,7 @@ impl Plugin for AppPlugin {
         .add_plugin(PlanPlugin)
         .add_plugin(InputPlugin)
         .add_plugin(BindingPlugin)
-        .add_plugin(ActionPlugin)
+        .add_plugin(CommandPlugin)
         .add_plugin(ConsolidationPlugin)
         .add_plugin(UiPlugin)
         .add_startup_system(setup);

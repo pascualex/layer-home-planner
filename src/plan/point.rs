@@ -51,16 +51,29 @@ pub struct PointBundle {
 }
 
 impl PointBundle {
-    pub fn new(assets: &PointAssets) -> Self {
+    pub fn new(blueprint: PointBlueprint, assets: &PointAssets) -> Self {
         Self {
             material_mesh: ColorMesh2dBundle {
                 mesh: assets.mesh.clone().into(),
                 material: assets.standard_material.clone(),
-                transform: Transform::from_translation(Vec2::ZERO.extend(STANDARD_POINT_PRIORITY)),
+                transform: Transform::from_translation(
+                    blueprint.position.extend(STANDARD_POINT_PRIORITY),
+                ),
                 ..default()
             },
             point: Point::default(),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PointBlueprint {
+    position: Vec2,
+}
+
+impl PointBlueprint {
+    pub fn new(position: Vec2) -> Self {
+        Self { position }
     }
 }
 

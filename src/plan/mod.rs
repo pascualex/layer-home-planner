@@ -22,27 +22,20 @@ impl Plugin for PlanPlugin {
     }
 }
 
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Default, Clone, Copy, Debug)]
 pub enum PlanMode {
     #[default]
     Default,
     Select(Entity),
-    Track(Entity, TrackModeCancelation),
+    Track(Entity),
 }
 
 impl PlanMode {
     pub fn selection(&self) -> Option<Entity> {
         match *self {
             PlanMode::Select(selection) => Some(selection),
-            PlanMode::Track(selection, _) => Some(selection),
+            PlanMode::Track(selection) => Some(selection),
             _ => None,
         }
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum TrackModeCancelation {
-    Move(Vec2),
-    Destroy,
-    DestroyAndSelect(Entity),
 }

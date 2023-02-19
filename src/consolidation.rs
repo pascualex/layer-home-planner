@@ -33,7 +33,7 @@ fn track_cursor_with_selection(
     cursor: Res<Cursor>,
     mut query: Query<&mut Transform, With<Point>>,
 ) {
-    if let PlanMode::Track(entity, _) = *mode {
+    if let PlanMode::Track(entity) = *mode {
         let mut transform = query.get_mut(entity).unwrap();
         if let Some(position) = cursor.track_position() {
             transform.translation.x = position.x;
@@ -73,7 +73,7 @@ fn update_lines(
     for (point_a_entity, transform_a, point_a) in &changed_point_query {
         for &line_entity in &point_a.lines {
             let (mut line_transform, mut mesh, line) = line_query.get_mut(line_entity).unwrap();
-            let point_b_entity = line.other(point_a_entity).unwrap();
+            let point_b_entity = line.neighbour(point_a_entity).unwrap();
             let transform_b = other_point_query.get(point_b_entity).unwrap();
             let (position, local_a, local_b) = calculate_line(
                 transform_a.translation.truncate(),
