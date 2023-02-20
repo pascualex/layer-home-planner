@@ -39,6 +39,7 @@ fn commit_as_undo(
 ) {
     if !uncommited_action.is_empty() {
         undo_actions.push(take(&mut **uncommited_action));
+        // redo actions are cleared when action history diverges
         redo_actions.clear();
     }
 }
@@ -79,8 +80,8 @@ fn discard_uncommited(
 pub struct Undo;
 
 fn undo(In(Undo): In<Undo>, mut undo_actions: ResMut<UndoActions>, mut commands: Commands) {
-    if let Some(action) = undo_actions.pop() {
-        for command in action.0.into_iter().rev() {
+    if let Some(mut action) = undo_actions.pop() {
+        while let Some(command) = action.pop() {
             command.add_to(&mut commands);
         }
         commands.add_system_command(CommitAsRedo);
@@ -90,8 +91,8 @@ fn undo(In(Undo): In<Undo>, mut undo_actions: ResMut<UndoActions>, mut commands:
 pub struct Redo;
 
 fn redo(In(Redo): In<Redo>, mut redo_actions: ResMut<RedoActions>, mut commands: Commands) {
-    if let Some(action) = redo_actions.pop() {
-        for command in action.0.into_iter().rev() {
+    if let Some(mut action) = redo_actions.pop() {
+        while let Some(command) = action.pop() {
             command.add_to(&mut commands);
         }
         commands.add_system_command(CommitAsUndoFromRedo);
@@ -105,8 +106,10 @@ fn undo_uncommited(
     mut uncommited_action: ResMut<UncommitedAction>,
     mut commands: Commands,
 ) {
-    let action = take(&mut **uncommited_action);
-    for command in action.0.into_iter().rev() {
+    let mut action = take(&mut **uncommited_action);
+    while let Some(command) = action.pop() {
         command.add_to(&mut commands);
     }
+    // uncommited generated from undoing the previous uncommitted are discarded
+    commands.add_system_command(DiscardUncommitted);
 }
