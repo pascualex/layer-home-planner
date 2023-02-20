@@ -14,6 +14,7 @@ impl Plugin for UndoCommandPlugin {
         app.init_resource::<UndoActions>()
             .init_resource::<RedoActions>()
             .register_system_command(commit_as_undo)
+            .register_system_command(commit_as_undo_from_redo)
             .register_system_command(commit_as_redo)
             .register_system_command(discard_uncommited)
             .register_system_command(undo)
@@ -32,6 +33,20 @@ pub struct CommitAsUndo;
 
 fn commit_as_undo(
     In(CommitAsUndo): In<CommitAsUndo>,
+    mut uncommited_action: ResMut<UncommitedAction>,
+    mut undo_actions: ResMut<UndoActions>,
+    mut redo_actions: ResMut<RedoActions>,
+) {
+    if !uncommited_action.is_empty() {
+        undo_actions.push(take(&mut **uncommited_action));
+        redo_actions.clear();
+    }
+}
+
+pub struct CommitAsUndoFromRedo;
+
+fn commit_as_undo_from_redo(
+    In(CommitAsUndoFromRedo): In<CommitAsUndoFromRedo>,
     mut uncommited_action: ResMut<UncommitedAction>,
     mut undo_actions: ResMut<UndoActions>,
 ) {
@@ -79,7 +94,7 @@ fn redo(In(Redo): In<Redo>, mut redo_actions: ResMut<RedoActions>, mut commands:
         for command in action.0.into_iter().rev() {
             command.add_to(&mut commands);
         }
-        commands.add_system_command(CommitAsUndo);
+        commands.add_system_command(CommitAsUndoFromRedo);
     }
 }
 
@@ -94,5 +109,4 @@ fn undo_uncommited(
     for command in action.0.into_iter().rev() {
         command.add_to(&mut commands);
     }
-    commands.add_system_command(DiscardUncommitted);
 }
