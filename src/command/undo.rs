@@ -68,7 +68,7 @@ fn commit_as_redo(
     }
 }
 
-pub struct DiscardUncommitted;
+struct DiscardUncommitted;
 
 fn discard_uncommited(
     In(DiscardUncommitted): In<DiscardUncommitted>,
@@ -81,6 +81,8 @@ pub struct Undo;
 
 fn undo(In(Undo): In<Undo>, mut undo_actions: ResMut<UndoActions>, mut commands: Commands) {
     if let Some(mut action) = undo_actions.pop() {
+        // uncommitted commands must be undone first
+        commands.add_system_command(UndoUncommitted);
         while let Some(command) = action.pop() {
             command.add_to(&mut commands);
         }

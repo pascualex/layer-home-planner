@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
-    command::undo::{RedoActions, UndoActions},
+    command::{
+        undo::{RedoActions, UndoActions},
+        UncommitedAction,
+    },
     palette,
     plan::{line::Line, point::Point, PlanMode},
     AppSet,
@@ -20,6 +23,7 @@ impl Plugin for UiPlugin {
                     update_line_counter_text,
                     update_undo_counter_text,
                     update_redo_counter_text,
+                    update_uncommitted_counter_text,
                 )
                     .in_set(AppSet::Ui),
             );
@@ -45,6 +49,9 @@ struct UndoCounterText;
 
 #[derive(Component)]
 struct RedoCounterText;
+
+#[derive(Component)]
+struct UncommittedCounterText;
 
 impl FromWorld for UiAssets {
     fn from_world(world: &mut World) -> Self {
@@ -150,11 +157,26 @@ fn spawn_counters_panel(assets: Res<UiAssets>, mut commands: Commands) {
         },
         RedoCounterText,
     );
+    let uncommitted_counter_text = (
+        TextBundle {
+            text: Text::from_section(
+                "Uninitialized uncommitted counter",
+                TextStyle {
+                    font: assets.font.clone(),
+                    font_size: 30.0,
+                    color: palette::LIGHT_WHITE,
+                },
+            ),
+            ..default()
+        },
+        UncommittedCounterText,
+    );
     commands.spawn(root).with_children(|builder| {
         builder.spawn(point_counter_text);
         builder.spawn(line_counter_text);
         builder.spawn(undo_counter_text);
         builder.spawn(redo_counter_text);
+        builder.spawn(uncommitted_counter_text);
     });
 }
 
@@ -218,4 +240,13 @@ fn update_redo_counter_text(
     let mut text = text_query.single_mut();
     let count = redo_actions.len();
     text.sections[0].value = format!("Redo: {count}");
+}
+
+fn update_uncommitted_counter_text(
+    uncommitted_action: Res<UncommitedAction>,
+    mut text_query: Query<&mut Text, With<UncommittedCounterText>>,
+) {
+    let mut text = text_query.single_mut();
+    let count = uncommitted_action.len();
+    text.sections[0].value = format!("Uncommitted: {count}");
 }

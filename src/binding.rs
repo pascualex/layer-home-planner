@@ -6,7 +6,7 @@ use crate::{
         plan_mode::ChangePlanMode,
         point::{CreatePoint, DeletePoint, MovePoint},
         system_command::AddSystemCommand,
-        undo::{CommitAsUndo, DiscardUncommitted, Redo, Undo, UndoUncommitted},
+        undo::{CommitAsUndo, Redo, Undo, UndoUncommitted},
     },
     input::{Cursor, Hover},
     plan::{line::LineBlueprint, point::PointBlueprint, PlanMode},
@@ -39,8 +39,8 @@ impl DefaultBindings {
             }
         } else if let Some(hovered_point) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
+                commands.add_system_command(UndoUncommitted);
                 commands.add_system_command(ChangePlanMode(PlanMode::Select(hovered_point)));
-                commands.add_system_command(DiscardUncommitted);
             }
         } else if let Some(cursor_position) = cursor.position {
             if keyboard_input.just_pressed(KeyCode::E) {
@@ -80,12 +80,12 @@ impl SelectBindings {
             commands.add_system_command(DeletePoint(selection));
             commands.add_system_command(CommitAsUndo);
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
+            commands.add_system_command(UndoUncommitted);
             commands.add_system_command(ChangePlanMode(PlanMode::Default));
-            commands.add_system_command(DiscardUncommitted);
         } else if let Some(hovered_point) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) && hovered_point != selection {
+                commands.add_system_command(UndoUncommitted);
                 commands.add_system_command(ChangePlanMode(PlanMode::Select(hovered_point)));
-                commands.add_system_command(DiscardUncommitted);
             }
         } else if let Some(cursor_position) = cursor.position {
             if keyboard_input.just_pressed(KeyCode::G) {
@@ -104,8 +104,8 @@ impl SelectBindings {
                 ));
                 commands.add_system_command(ChangePlanMode(PlanMode::Track(new_point)));
             } else if mouse_input.just_pressed(MouseButton::Left) {
+                commands.add_system_command(UndoUncommitted);
                 commands.add_system_command(ChangePlanMode(PlanMode::Default));
-                commands.add_system_command(DiscardUncommitted);
             }
         }
     }

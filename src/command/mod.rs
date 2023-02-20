@@ -32,7 +32,7 @@ impl Plugin for CommandPlugin {
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
-struct UncommitedAction(Action);
+pub struct UncommitedAction(Action);
 
 #[derive(Default, Deref, DerefMut)]
 pub struct Action(Vec<Box<dyn AddToCommands + Send + Sync>>);
