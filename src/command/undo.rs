@@ -17,7 +17,8 @@ impl Plugin for UndoCommandPlugin {
             .register_system_command(commit_as_redo)
             .register_system_command(discard_uncommited)
             .register_system_command(undo)
-            .register_system_command(redo);
+            .register_system_command(redo)
+            .register_system_command(undo_uncommited);
     }
 }
 
@@ -80,4 +81,18 @@ fn redo(In(Redo): In<Redo>, mut redo_actions: ResMut<RedoActions>, mut commands:
         }
         commands.add_system_command(CommitAsUndo);
     }
+}
+
+pub struct UndoUncommitted;
+
+fn undo_uncommited(
+    In(UndoUncommitted): In<UndoUncommitted>,
+    mut uncommited_action: ResMut<UncommitedAction>,
+    mut commands: Commands,
+) {
+    let action = take(&mut **uncommited_action);
+    for command in action.0.into_iter().rev() {
+        command.add_to(&mut commands);
+    }
+    commands.add_system_command(DiscardUncommitted);
 }
