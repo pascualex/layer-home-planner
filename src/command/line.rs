@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     command::{
         system_command::{AddSystemCommand, RegisterSystemCommand},
-        RegisterUndoSystemCommand,
+        RegisterUndoableSystemCommand,
     },
     plan::{
         line::{Line, LineAssets, LineBlueprint, LineBundle},
@@ -15,8 +15,8 @@ pub struct LineCommandPlugin;
 
 impl Plugin for LineCommandPlugin {
     fn build(&self, app: &mut App) {
-        app.register_undo_system_command(create_line)
-            .register_undo_system_command(delete_line)
+        app.register_undoable_system_command(create_line)
+            .register_undoable_system_command(delete_line)
             .register_system_command(delete_lines)
             .register_system_command(transfer_lines);
     }
@@ -52,16 +52,19 @@ fn delete_line(
 ) -> CreateLine {
     // get state
     let line = line_query.get(entity).unwrap();
-    let point_a_entity = line.point_a;
-    let point_b_entity = line.point_b;
+    let old_point_a_entity = line.point_a;
+    let old_point_b_entity = line.point_b;
     // apply
-    commands.entity(entity).despawn_recursive();
-    let mut point_a = point_query.get_mut(point_a_entity).unwrap();
+    let mut point_a = point_query.get_mut(line.point_a).unwrap();
     point_a.remove_line(entity);
-    let mut point_b = point_query.get_mut(point_b_entity).unwrap();
+    let mut point_b = point_query.get_mut(line.point_b).unwrap();
     point_b.remove_line(entity);
+    commands.entity(entity).despawn_recursive();
     // push undo
-    CreateLine(entity, LineBlueprint::new(point_a_entity, point_b_entity))
+    CreateLine(
+        entity,
+        LineBlueprint::new(old_point_a_entity, old_point_b_entity),
+    )
 }
 
 pub struct DeleteLines(pub Entity);

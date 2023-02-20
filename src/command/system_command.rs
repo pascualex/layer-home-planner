@@ -1,6 +1,6 @@
 use bevy::{ecs::system::Command, prelude::*};
 
-struct SystemCommand<T: 'static + Send + Sync>(T);
+pub struct SystemCommand<T: 'static + Send + Sync>(pub T);
 
 impl<T: 'static + Send + Sync> Command for SystemCommand<T> {
     fn write(self, world: &mut World) {

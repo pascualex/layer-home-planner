@@ -4,8 +4,9 @@ use crate::{
     command::{
         line::{CreateLine, DeleteLines, TransferLines},
         plan_mode::ChangePlanMode,
-        point::{CreatePoint, DeletePoint},
+        point::{CreatePoint, DeletePoint, MovePoint},
         system_command::AddSystemCommand,
+        undo::{CommitAsUndo, DiscardUncommitted, Redo, Undo},
     },
     input::{Cursor, Hover},
     plan::{line::LineBlueprint, point::PointBlueprint, PlanMode},
@@ -30,9 +31,16 @@ impl DefaultBindings {
         keyboard_input: &Input<KeyCode>,
         commands: &mut Commands,
     ) {
-        if let Some(hovered_point) = hover.point {
+        if keyboard_input.just_pressed(KeyCode::U) {
+            if keyboard_input.pressed(KeyCode::LShift) || keyboard_input.pressed(KeyCode::RShift) {
+                commands.add_system_command(Redo);
+            } else {
+                commands.add_system_command(Undo);
+            }
+        } else if let Some(hovered_point) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
                 commands.add_system_command(ChangePlanMode(PlanMode::Select(hovered_point)));
+                commands.add_system_command(DiscardUncommitted);
             }
         } else if let Some(cursor_position) = cursor.position {
             if keyboard_input.just_pressed(KeyCode::E) {
@@ -42,6 +50,7 @@ impl DefaultBindings {
                     PointBlueprint::new(cursor_position),
                 ));
                 commands.add_system_command(ChangePlanMode(PlanMode::Track(new_point)));
+                commands.add_system_command(CommitAsUndo);
             }
         }
     }
@@ -60,20 +69,31 @@ impl SelectBindings {
         keyboard_input: &Input<KeyCode>,
         commands: &mut Commands,
     ) {
-        if keyboard_input.just_pressed(KeyCode::G) {
-            commands.add_system_command(ChangePlanMode(PlanMode::Track(selection)));
+        if keyboard_input.just_pressed(KeyCode::U) {
+            if keyboard_input.pressed(KeyCode::LShift) || keyboard_input.pressed(KeyCode::RShift) {
+                commands.add_system_command(Redo);
+            } else {
+                commands.add_system_command(Undo);
+            }
         } else if keyboard_input.just_pressed(KeyCode::Delete) {
+            commands.add_system_command(ChangePlanMode(PlanMode::Default));
             commands.add_system_command(DeleteLines(selection));
             commands.add_system_command(DeletePoint(selection));
-            commands.add_system_command(ChangePlanMode(PlanMode::Default));
+            commands.add_system_command(CommitAsUndo);
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
             commands.add_system_command(ChangePlanMode(PlanMode::Default));
+            commands.add_system_command(DiscardUncommitted);
         } else if let Some(hovered_point) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) && hovered_point != selection {
                 commands.add_system_command(ChangePlanMode(PlanMode::Select(hovered_point)));
+                commands.add_system_command(CommitAsUndo);
             }
         } else if let Some(cursor_position) = cursor.position {
-            if keyboard_input.just_pressed(KeyCode::E) {
+            if keyboard_input.just_pressed(KeyCode::G) {
+                commands.add_system_command(MovePoint(selection, cursor_position));
+                commands.add_system_command(ChangePlanMode(PlanMode::Track(selection)));
+                commands.add_system_command(CommitAsUndo);
+            } else if keyboard_input.just_pressed(KeyCode::E) {
                 let new_point = commands.spawn_empty().id();
                 let new_line = commands.spawn_empty().id();
                 commands.add_system_command(CreatePoint(
@@ -85,10 +105,10 @@ impl SelectBindings {
                     LineBlueprint::new(selection, new_point),
                 ));
                 commands.add_system_command(ChangePlanMode(PlanMode::Track(new_point)));
-            }
-        } else {
-            if mouse_input.just_pressed(MouseButton::Left) {
+                commands.add_system_command(CommitAsUndo);
+            } else if mouse_input.just_pressed(MouseButton::Left) {
                 commands.add_system_command(ChangePlanMode(PlanMode::Default));
+                commands.add_system_command(DiscardUncommitted);
             }
         }
     }
@@ -107,20 +127,31 @@ impl TrackBindings {
         commands: &mut Commands,
     ) {
         if keyboard_input.just_pressed(KeyCode::Delete) {
+            commands.add_system_command(ChangePlanMode(PlanMode::Default));
             commands.add_system_command(DeleteLines(tracked_entity));
             commands.add_system_command(DeletePoint(tracked_entity));
-            commands.add_system_command(ChangePlanMode(PlanMode::Default));
+            commands.add_system_command(CommitAsUndo);
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
             commands.add_system_command(ChangePlanMode(PlanMode::Default));
+            commands.add_system_command(DiscardUncommitted);
+        } else if keyboard_input.just_pressed(KeyCode::U) {
+            if keyboard_input.pressed(KeyCode::LShift) || keyboard_input.pressed(KeyCode::RShift) {
+                commands.add_system_command(Redo);
+            } else {
+                commands.add_system_command(ChangePlanMode(PlanMode::Default));
+                commands.add_system_command(DiscardUncommitted);
+            }
         } else if let Some(hovered_point) = hover.point {
             if mouse_input.just_pressed(MouseButton::Left) {
+                commands.add_system_command(ChangePlanMode(PlanMode::Select(hovered_point)));
                 commands.add_system_command(TransferLines(tracked_entity, hovered_point));
                 commands.add_system_command(DeletePoint(tracked_entity));
-                commands.add_system_command(ChangePlanMode(PlanMode::Select(hovered_point)));
+                commands.add_system_command(CommitAsUndo);
             }
         } else {
             if mouse_input.just_pressed(MouseButton::Left) {
-                commands.add_system_command(ChangePlanMode(PlanMode::Select(tracked_entity)))
+                commands.add_system_command(ChangePlanMode(PlanMode::Select(tracked_entity)));
+                commands.add_system_command(DiscardUncommitted);
             }
         }
     }

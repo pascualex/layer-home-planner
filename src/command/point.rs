@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    command::RegisterUndoSystemCommand,
+    command::RegisterUndoableSystemCommand,
     plan::point::{Point, PointAssets, PointBlueprint, PointBundle},
 };
 
@@ -9,8 +9,9 @@ pub struct PointCommandPlugin;
 
 impl Plugin for PointCommandPlugin {
     fn build(&self, app: &mut App) {
-        app.register_undo_system_command(create_point)
-            .register_undo_system_command(delete_point);
+        app.register_undoable_system_command(create_point)
+            .register_undoable_system_command(move_point)
+            .register_undoable_system_command(delete_point);
     }
 }
 
@@ -29,6 +30,23 @@ fn create_point(
     DeletePoint(entity)
 }
 
+pub struct MovePoint(pub Entity, pub Vec2);
+
+fn move_point(
+    In(MovePoint(entity, new_position)): In<MovePoint>,
+    mut point_query: Query<&mut Transform, With<Point>>,
+) -> MovePoint {
+    // get state
+    let transform = point_query.get(entity).unwrap();
+    let old_position = transform.translation.truncate();
+    // apply
+    let mut transform = point_query.get_mut(entity).unwrap();
+    transform.translation.x = new_position.x;
+    transform.translation.y = new_position.y;
+    // build undo
+    MovePoint(entity, old_position)
+}
+
 pub struct DeletePoint(pub Entity);
 
 fn delete_point(
@@ -38,28 +56,9 @@ fn delete_point(
 ) -> CreatePoint {
     // get state
     let transform = point_query.get(entity).unwrap();
-    let position = transform.translation.truncate();
+    let old_position = transform.translation.truncate();
     // apply
     commands.entity(entity).despawn_recursive();
     // build undo
-    CreatePoint(entity, PointBlueprint::new(position))
+    CreatePoint(entity, PointBlueprint::new(old_position))
 }
-
-// fn apply_move_point_action(
-//     action: Res<CurrentAction>,
-//     mut point_query: Query<&mut Transform, With<Point>>,
-//     mut undo_action_stack: ResMut<UndoActionStack>,
-// ) {
-//     if let Action::Point(PointAction::Move(entity, position)) = **action {
-//         // push undo
-//         let transform = point_query.get(entity).unwrap();
-//         undo_action_stack.push(Action::Point(PointAction::Move(
-//             entity,
-//             transform.translation.truncate(),
-//         )));
-//         // apply
-//         let mut transform = point_query.get_mut(entity).unwrap();
-//         transform.translation.x = position.x;
-//         transform.translation.y = position.y;
-//     }
-// }
