@@ -35,9 +35,9 @@ impl Plugin for CommandPlugin {
 struct UncommitedAction(Action);
 
 #[derive(Default, Deref, DerefMut)]
-struct Action(Vec<Box<dyn AddToCommands + Send + Sync>>);
+pub struct Action(Vec<Box<dyn AddToCommands + Send + Sync>>);
 
-trait AddToCommands {
+pub trait AddToCommands {
     fn add_to(self: Box<Self>, commands: &mut Commands);
 }
 

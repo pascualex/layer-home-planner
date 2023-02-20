@@ -23,10 +23,10 @@ impl Plugin for UndoCommandPlugin {
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
-struct UndoActions(Vec<Action>);
+pub struct UndoActions(Vec<Action>);
 
 #[derive(Resource, Default, Deref, DerefMut)]
-struct RedoActions(Vec<Action>);
+pub struct RedoActions(Vec<Action>);
 
 pub struct CommitAsUndo;
 

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
+    command::undo::{RedoActions, UndoActions},
     palette,
     plan::{line::Line, point::Point, PlanMode},
     AppSet,
@@ -17,6 +18,8 @@ impl Plugin for UiPlugin {
                     update_coordinates_text,
                     update_point_counter_text,
                     update_line_counter_text,
+                    update_undo_counter_text,
+                    update_redo_counter_text,
                 )
                     .in_set(AppSet::Ui),
             );
@@ -36,6 +39,12 @@ struct PointCounterText;
 
 #[derive(Component)]
 struct LineCounterText;
+
+#[derive(Component)]
+struct UndoCounterText;
+
+#[derive(Component)]
+struct RedoCounterText;
 
 impl FromWorld for UiAssets {
     fn from_world(world: &mut World) -> Self {
@@ -113,9 +122,39 @@ fn spawn_counters_panel(assets: Res<UiAssets>, mut commands: Commands) {
         },
         LineCounterText,
     );
+    let undo_counter_text = (
+        TextBundle {
+            text: Text::from_section(
+                "Uninitialized undo counter",
+                TextStyle {
+                    font: assets.font.clone(),
+                    font_size: 30.0,
+                    color: palette::LIGHT_WHITE,
+                },
+            ),
+            ..default()
+        },
+        UndoCounterText,
+    );
+    let redo_counter_text = (
+        TextBundle {
+            text: Text::from_section(
+                "Uninitialized redo counter",
+                TextStyle {
+                    font: assets.font.clone(),
+                    font_size: 30.0,
+                    color: palette::LIGHT_WHITE,
+                },
+            ),
+            ..default()
+        },
+        RedoCounterText,
+    );
     commands.spawn(root).with_children(|builder| {
         builder.spawn(point_counter_text);
         builder.spawn(line_counter_text);
+        builder.spawn(undo_counter_text);
+        builder.spawn(redo_counter_text);
     });
 }
 
@@ -161,4 +200,22 @@ fn update_line_counter_text(
     let mut text = text_query.single_mut();
     let count = line_query.iter().len();
     text.sections[0].value = format!("Lines: {count}");
+}
+
+fn update_undo_counter_text(
+    undo_actions: Res<UndoActions>,
+    mut text_query: Query<&mut Text, With<UndoCounterText>>,
+) {
+    let mut text = text_query.single_mut();
+    let count = undo_actions.len();
+    text.sections[0].value = format!("Undo: {count}");
+}
+
+fn update_redo_counter_text(
+    redo_actions: Res<RedoActions>,
+    mut text_query: Query<&mut Text, With<RedoCounterText>>,
+) {
+    let mut text = text_query.single_mut();
+    let count = redo_actions.len();
+    text.sections[0].value = format!("Redo: {count}");
 }
