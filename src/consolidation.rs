@@ -3,10 +3,12 @@ use bevy::{prelude::*, sprite::Mesh2dHandle};
 use crate::{
     input::{Cursor, Hover},
     plan::{
-        line::{Line, LineShape, LINE_WIDTH},
+        line::{
+            Line, LineShape, HOVERED_LINE_PRIORITY, LINE_PRIORITY, LINE_WIDTH,
+            SELECTED_LINE_PRIORITY,
+        },
         point::{
-            Point, PointAssets, HOVERED_POINT_PRIORITY, SELECTED_POINT_PRIORITY,
-            STANDARD_POINT_PRIORITY,
+            Point, PointAssets, HOVERED_POINT_PRIORITY, POINT_PRIORITY, SELECTED_POINT_PRIORITY,
         },
         PlanMode, PointMode,
     },
@@ -20,6 +22,7 @@ impl Plugin for ConsolidationPlugin {
         app.add_systems(
             (
                 highlight_points,
+                highlight_lines,
                 track_cursor_with_selection,
                 update_lines.after(track_cursor_with_selection),
             )
@@ -45,16 +48,35 @@ fn track_cursor_with_selection(
 fn highlight_points(
     plan_mode: Res<PlanMode>,
     hover: Res<Hover>,
-    mut query: Query<(Entity, &mut Transform, &mut Handle<ColorMaterial>), With<Point>>,
+    mut point_query: Query<(Entity, &mut Transform, &mut Handle<ColorMaterial>), With<Point>>,
     assets: Res<PointAssets>,
 ) {
-    for (entity, mut transform, mut material) in &mut query {
+    for (entity, mut transform, mut material) in &mut point_query {
         let (mode_material, mode_priority) = if Some(entity) == plan_mode.point() {
             (&assets.selected_material, SELECTED_POINT_PRIORITY)
-        } else if Some(entity) == hover.point {
+        } else if Some(entity) == hover.point() {
             (&assets.hovered_material, HOVERED_POINT_PRIORITY)
         } else {
-            (&assets.standard_material, STANDARD_POINT_PRIORITY)
+            (&assets.standard_material, POINT_PRIORITY)
+        };
+        transform.translation.z = mode_priority;
+        *material = mode_material.clone();
+    }
+}
+
+fn highlight_lines(
+    plan_mode: Res<PlanMode>,
+    hover: Res<Hover>,
+    mut line_query: Query<(Entity, &mut Transform, &mut Handle<ColorMaterial>), With<Line>>,
+    assets: Res<PointAssets>,
+) {
+    for (entity, mut transform, mut material) in &mut line_query {
+        let (mode_material, mode_priority) = if Some(entity) == plan_mode.line() {
+            (&assets.selected_material, SELECTED_LINE_PRIORITY)
+        } else if Some(entity) == hover.line() {
+            (&assets.hovered_material, HOVERED_LINE_PRIORITY)
+        } else {
+            (&assets.standard_material, LINE_PRIORITY)
         };
         transform.translation.z = mode_priority;
         *material = mode_material.clone();

@@ -9,7 +9,7 @@ use crate::{
         system_command::{AddSystemCommand, RegisterSystemCommand},
     },
     input::Hover,
-    plan::{line::LineBlueprint, point::PointBlueprint, TrackMode},
+    plan::{line::LineBlueprint, point::PointBlueprint, Element, TrackMode},
 };
 
 pub struct SelectBindingsPlugin;
@@ -31,7 +31,7 @@ pub struct SelectBindings {
 
 impl SelectBindings {
     pub fn get_hits(&self, selected_point: Entity, hover: &Hover, hits: &mut BindingHits) {
-        if let Some(hovered_point) = hover.point {
+        if let Element::Point(hovered_point) = **hover {
             hits.no_commit("Select", self.select, SelectPoint(hovered_point));
         } else {
             hits.no_commit("Unselect", self.select, Unselect);

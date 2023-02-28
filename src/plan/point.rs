@@ -4,8 +4,8 @@ use crate::plan::{line::LINE_PRIORITY, HOVERED_COLOR, SELECTED_COLOR, STANDARD_C
 
 pub const POINT_RADIUS: f32 = 0.06;
 pub const POINT_VERTICES: usize = 16;
-pub const STANDARD_POINT_PRIORITY: f32 = LINE_PRIORITY + 1.0;
-pub const HOVERED_POINT_PRIORITY: f32 = STANDARD_POINT_PRIORITY + 0.1;
+pub const POINT_PRIORITY: f32 = LINE_PRIORITY + 1.0;
+pub const HOVERED_POINT_PRIORITY: f32 = POINT_PRIORITY + 0.1;
 pub const SELECTED_POINT_PRIORITY: f32 = HOVERED_POINT_PRIORITY + 0.1;
 
 pub struct PointPlugin;
@@ -56,9 +56,7 @@ impl PointBundle {
             material_mesh: ColorMesh2dBundle {
                 mesh: assets.mesh.clone().into(),
                 material: assets.standard_material.clone(),
-                transform: Transform::from_translation(
-                    blueprint.position.extend(STANDARD_POINT_PRIORITY),
-                ),
+                transform: Transform::from_translation(blueprint.position.extend(POINT_PRIORITY)),
                 ..default()
             },
             point: Point::default(),

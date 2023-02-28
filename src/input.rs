@@ -2,8 +2,9 @@ use bevy::prelude::*;
 
 use crate::{
     plan::{
+        line::{Line, LINE_WIDTH},
         point::{Point, POINT_RADIUS},
-        PlanMode, PointMode,
+        Element, PlanMode, PointMode,
     },
     AppSet,
 };
@@ -58,10 +59,8 @@ impl CursorMode {
     }
 }
 
-#[derive(Resource, Default)]
-pub struct Hover {
-    pub point: Option<Entity>,
-}
+#[derive(Resource, Default, Deref, DerefMut)]
+pub struct Hover(Element);
 
 fn update_cursor_position(
     window_query: Query<&Window>,
@@ -88,7 +87,8 @@ fn update_cursor_mode(input: Res<Input<KeyCode>>, mut cursor: ResMut<Cursor>) {
 
 fn update_hover(
     cursor: Res<Cursor>,
-    query: Query<(Entity, &Transform), With<Point>>,
+    point_query: Query<(Entity, &Transform), With<Point>>,
+    line_query: Query<(Entity, &Line)>,
     mode: Res<PlanMode>,
     mut hover: ResMut<Hover>,
 ) {
@@ -99,7 +99,7 @@ fn update_hover(
         PlanMode::Point(point_entity, PointMode::Track(_)) => Some(point_entity),
         _ => None,
     };
-    hover.point = query
+    let hovered_point_entity = point_query
         .iter()
         // don't hover the tracked point
         .filter(|(point_entity, _)| Some(*point_entity) != tracked_point_entity)
@@ -117,4 +117,51 @@ fn update_hover(
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
         .map(|(point_entity, _)| point_entity);
+    if let Some(hovered_point_entity) = hovered_point_entity {
+        **hover = Element::Point(hovered_point_entity);
+        return;
+    }
+    let hovered_line_entity = line_query
+        .iter()
+        .map(|(line_entity, line)| {
+            (
+                line_entity,
+                point_query
+                    .get(line.point_a)
+                    .unwrap()
+                    .1
+                    .translation
+                    .truncate(),
+                point_query
+                    .get(line.point_b)
+                    .unwrap()
+                    .1
+                    .translation
+                    .truncate(),
+            )
+        })
+        .map(|(line_entity, point_a, point_b)| {
+            let squared_len = Vec2::distance_squared(point_a, point_b);
+            if squared_len == 0.0 {
+                return (line_entity, Vec2::distance(point_a, cursor_position));
+            }
+            let t = f32::clamp(
+                Vec2::dot(cursor_position - point_a, point_b - point_a) / squared_len,
+                0.0,
+                1.0,
+            );
+            let projection = point_a + t * (point_b - point_a);
+            (line_entity, Vec2::distance(projection, cursor_position))
+        })
+        .filter(|(_, distance)| *distance <= 2.0 * LINE_WIDTH)
+        .min_by(|(_, distance_a), (_, distance_b)| {
+            distance_a
+                .partial_cmp(distance_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(line_entity, _)| line_entity);
+    **hover = match hovered_line_entity {
+        Some(hovered_line_entity) => Element::Line(hovered_line_entity),
+        None => Element::None,
+    }
 }

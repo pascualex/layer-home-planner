@@ -9,7 +9,7 @@ use crate::{
         system_command::{AddSystemCommand, RegisterSystemCommand},
     },
     input::Hover,
-    plan::TrackMode,
+    plan::{Element, TrackMode},
 };
 
 pub struct TrackBindingsPlugin;
@@ -34,7 +34,7 @@ impl TrackBindings {
         hover: &Hover,
         hits: &mut BindingHits,
     ) {
-        if let Some(hovered_point) = hover.point {
+        if let Element::Point(hovered_point) = **hover {
             hits.commit(
                 "Merge",
                 self.place,

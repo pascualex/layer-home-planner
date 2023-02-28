@@ -60,6 +60,7 @@ impl Bindings {
                         .get_hits(selected_point, cancel_point, hover, hits)
                 }
             },
+            _ => (),
         }
         if can_undo {
             hits.no_commit("Undo", self.undo, Undo);

@@ -2,11 +2,9 @@ use bevy::prelude::*;
 
 use crate::{
     command::{
-        action::{Selection, UncommittedCommands},
-        point::MovePoint,
-        system_command::RegisterSystemCommand,
+        action::UncommittedCommands, point::MovePoint, system_command::RegisterSystemCommand,
     },
-    plan::{point::Point, PlanMode, PointMode, TrackMode},
+    plan::{point::Point, Element, PlanMode, PointMode, TrackMode},
 };
 
 pub struct PlanModeCommandPlugin;
@@ -58,14 +56,15 @@ fn unselect(In(Unselect): In<Unselect>, mut plan_mode: ResMut<PlanMode>) {
 }
 
 #[derive(Debug)]
-pub struct ChangeSelection(pub Selection);
+pub struct ChangeSelection(pub Element);
 
 fn change_selection(
     In(ChangeSelection(new_selection)): In<ChangeSelection>,
     mut plan_mode: ResMut<PlanMode>,
 ) {
     *plan_mode = match new_selection {
-        Selection::Point(point) => PlanMode::Point(point, PointMode::Normal),
-        Selection::None => PlanMode::Normal,
+        Element::Point(point) => PlanMode::Point(point, PointMode::Normal),
+        Element::Line(line) => PlanMode::Line(line),
+        Element::None => PlanMode::Normal,
     };
 }

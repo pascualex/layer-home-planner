@@ -7,6 +7,8 @@ use crate::plan::{BASE_PRIORITY, STANDARD_COLOR};
 
 pub const LINE_WIDTH: f32 = 0.02;
 pub const LINE_PRIORITY: f32 = BASE_PRIORITY + 1.0;
+pub const HOVERED_LINE_PRIORITY: f32 = LINE_PRIORITY + 0.1;
+pub const SELECTED_LINE_PRIORITY: f32 = HOVERED_LINE_PRIORITY + 0.1;
 
 pub struct LinePlugin;
 

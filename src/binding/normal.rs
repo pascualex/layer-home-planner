@@ -8,7 +8,7 @@ use crate::{
         system_command::{AddSystemCommand, RegisterSystemCommand},
     },
     input::Hover,
-    plan::{point::PointBlueprint, TrackMode},
+    plan::{point::PointBlueprint, Element, TrackMode},
 };
 
 pub struct NormalBindingsPlugin;
@@ -26,7 +26,7 @@ pub struct NormalBindings {
 
 impl NormalBindings {
     pub fn get_hits(&self, hover: &Hover, hits: &mut BindingHits) {
-        if let Some(hovered_point) = hover.point {
+        if let Element::Point(hovered_point) = **hover {
             hits.no_commit("Select", self.select, SelectPoint(hovered_point));
         }
         hits.no_commit("Create", self.create, CustomCreate);

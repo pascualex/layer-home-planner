@@ -27,12 +27,20 @@ pub enum PlanMode {
     #[default]
     Normal,
     Point(Entity, PointMode),
+    Line(Entity),
 }
 
 impl PlanMode {
     pub fn point(&self) -> Option<Entity> {
         match self {
             PlanMode::Point(point, _) => Some(*point),
+            _ => None,
+        }
+    }
+
+    pub fn line(&self) -> Option<Entity> {
+        match self {
+            PlanMode::Line(line) => Some(*line),
             _ => None,
         }
     }
@@ -49,4 +57,28 @@ pub enum TrackMode {
     Create,
     Move,
     Extend(Entity),
+}
+
+#[derive(Default, Clone, Copy, Debug)]
+pub enum Element {
+    Point(Entity),
+    Line(Entity),
+    #[default]
+    None,
+}
+
+impl Element {
+    pub fn point(&self) -> Option<Entity> {
+        match self {
+            Element::Point(point) => Some(*point),
+            _ => None,
+        }
+    }
+
+    pub fn line(&self) -> Option<Entity> {
+        match self {
+            Element::Line(line) => Some(*line),
+            _ => None,
+        }
+    }
 }

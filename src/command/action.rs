@@ -7,7 +7,7 @@ use crate::{
         plan_mode::ChangeSelection,
         system_command::{AddSystemCommand, RegisterSystemCommand, SystemCommand},
     },
-    plan::PlanMode,
+    plan::{Element, PlanMode},
 };
 
 pub struct ActionPlugin;
@@ -36,22 +36,16 @@ pub struct RedoActions(Vec<Action>);
 #[derive(Debug)]
 pub struct Action {
     commands: Vec<Box<dyn AddToCommands + Send + Sync>>,
-    selection: Selection,
+    selection: Element,
 }
 
 impl Action {
-    pub fn new(commands: Vec<Box<dyn AddToCommands + Send + Sync>>, selection: Selection) -> Self {
+    pub fn new(commands: Vec<Box<dyn AddToCommands + Send + Sync>>, selection: Element) -> Self {
         Self {
             commands,
             selection,
         }
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum Selection {
-    Point(Entity),
-    None,
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
@@ -79,7 +73,7 @@ fn undo(In(Undo): In<Undo>, mut undo_actions: ResMut<UndoActions>, mut commands:
     }
     let new_selection = match undo_actions.last() {
         Some(action) => action.selection,
-        None => Selection::None,
+        None => Element::None,
     };
     commands.add_system_command(ChangeSelection(new_selection));
 }
@@ -124,7 +118,7 @@ fn discard_uncommitted(
     uncommitted_commands.clear();
     let new_selection = match undo_actions.last() {
         Some(action) => action.selection,
-        None => Selection::None,
+        None => Element::None,
     };
     commands.add_system_command(ChangeSelection(new_selection));
 }
@@ -141,15 +135,16 @@ fn commit_as_undo(
 ) {
     let commands = take(&mut **uncommitted_commands);
     let selection = match *plan_mode {
-        PlanMode::Normal => Selection::None,
-        PlanMode::Point(point, _) => Selection::Point(point),
+        PlanMode::Normal => Element::None,
+        PlanMode::Point(point, _) => Element::Point(point),
+        PlanMode::Line(line) => Element::Line(line),
     };
     undo_actions.push(Action::new(commands, selection));
     redo_actions.clear();
 }
 
 #[derive(Debug)]
-struct CommitAsUndoFromRedo(Selection);
+struct CommitAsUndoFromRedo(Element);
 
 fn commit_as_undo_from_redo(
     In(CommitAsUndoFromRedo(selection)): In<CommitAsUndoFromRedo>,
@@ -161,7 +156,7 @@ fn commit_as_undo_from_redo(
 }
 
 #[derive(Debug)]
-struct CommitAsRedo(Selection);
+struct CommitAsRedo(Element);
 
 fn commit_as_redo(
     In(CommitAsRedo(selection)): In<CommitAsRedo>,
