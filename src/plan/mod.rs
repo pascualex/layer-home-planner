@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::palette;
 
-use self::{line::LinePlugin, point::PointPlugin};
+use crate::plan::{line::LinePlugin, point::PointPlugin};
 
 const BASE_PRIORITY: f32 = 0.0;
 const STANDARD_COLOR: Color = palette::LIGHT_WHITE;
@@ -25,17 +25,28 @@ impl Plugin for PlanPlugin {
 #[derive(Resource, Default, Clone, Copy, Debug)]
 pub enum PlanMode {
     #[default]
-    Default,
-    Select(Entity),
-    Track(Entity),
+    Normal,
+    Point(Entity, PointMode),
 }
 
 impl PlanMode {
-    pub fn selection(&self) -> Option<Entity> {
-        match *self {
-            PlanMode::Select(selection) => Some(selection),
-            PlanMode::Track(selection) => Some(selection),
+    pub fn point(&self) -> Option<Entity> {
+        match self {
+            PlanMode::Point(point, _) => Some(*point),
             _ => None,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum PointMode {
+    Normal,
+    Track(TrackMode),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum TrackMode {
+    Create,
+    Move,
+    Extend(Entity),
 }

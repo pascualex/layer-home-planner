@@ -1,42 +1,29 @@
 use bevy::prelude::*;
 
 use crate::{
-    command::{
-        undo::{RedoActions, UndoActions},
-        UncommitedAction,
-    },
+    command::action::{RedoActions, UncommittedCommands, UndoActions},
     palette,
-    plan::{line::Line, point::Point, PlanMode},
+    plan::{line::Line, point::Point},
+    ui::UiAssets,
     AppSet,
 };
 
-pub struct UiPlugin;
+pub struct CounterUiPlugin;
 
-impl Plugin for UiPlugin {
+impl Plugin for CounterUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<UiAssets>()
-            .add_startup_systems((spawn_coordinates_panel, spawn_counters_panel))
-            .add_systems(
-                (
-                    update_coordinates_text,
-                    update_point_counter_text,
-                    update_line_counter_text,
-                    update_undo_counter_text,
-                    update_redo_counter_text,
-                    update_uncommitted_counter_text,
-                )
-                    .in_set(AppSet::Ui),
-            );
+        app.add_startup_system(spawn_counters_panel).add_systems(
+            (
+                update_point_counter_text,
+                update_line_counter_text,
+                update_undo_counter_text,
+                update_redo_counter_text,
+                update_uncommitted_counter_text,
+            )
+                .in_set(AppSet::Ui),
+        );
     }
 }
-
-#[derive(Resource)]
-struct UiAssets {
-    font: Handle<Font>,
-}
-
-#[derive(Component)]
-struct CoordinatesText;
 
 #[derive(Component)]
 struct PointCounterText;
@@ -53,50 +40,13 @@ struct RedoCounterText;
 #[derive(Component)]
 struct UncommittedCounterText;
 
-impl FromWorld for UiAssets {
-    fn from_world(world: &mut World) -> Self {
-        let asset_server: &AssetServer = world.resource();
-        Self {
-            font: asset_server.load("fonts/roboto_bold.ttf"),
-        }
-    }
-}
-
-fn spawn_coordinates_panel(assets: Res<UiAssets>, mut commands: Commands) {
-    let root = NodeBundle {
-        style: Style {
-            position_type: PositionType::Absolute,
-            position: UiRect::new(Val::Auto, Val::Px(40.0), Val::Px(40.0), Val::Auto),
-            ..default()
-        },
-        ..default()
-    };
-    let coordinates_text = (
-        TextBundle {
-            text: Text::from_section(
-                "Uninitialized coordinates",
-                TextStyle {
-                    font: assets.font.clone(),
-                    font_size: 30.0,
-                    color: palette::LIGHT_WHITE,
-                },
-            ),
-            ..default()
-        },
-        CoordinatesText,
-    );
-    commands.spawn(root).with_children(|builder| {
-        builder.spawn(coordinates_text);
-    });
-}
-
 fn spawn_counters_panel(assets: Res<UiAssets>, mut commands: Commands) {
     let root = NodeBundle {
         style: Style {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::FlexEnd,
             position_type: PositionType::Absolute,
-            position: UiRect::new(Val::Auto, Val::Px(40.0), Val::Auto, Val::Px(40.0)),
+            position: UiRect::new(Val::Auto, Val::Px(40.0), Val::Px(40.0), Val::Auto),
             ..default()
         },
         ..default()
@@ -180,39 +130,13 @@ fn spawn_counters_panel(assets: Res<UiAssets>, mut commands: Commands) {
     });
 }
 
-fn update_coordinates_text(
-    mode: Res<PlanMode>,
-    point_query: Query<&Transform, With<Point>>,
-    mut text_query: Query<&mut Text, With<CoordinatesText>>,
-) {
-    let mut text = text_query.single_mut();
-    if let Some(entity) = mode.selection() {
-        let transform = point_query.get(entity).unwrap();
-        text.sections[0].value = format!(
-            "({:.2}, {:.2})",
-            if transform.translation.x == -0.0 {
-                0.0
-            } else {
-                transform.translation.x
-            },
-            if transform.translation.y == -0.0 {
-                0.0
-            } else {
-                transform.translation.y
-            },
-        );
-    } else {
-        text.sections[0].value = "Nothing selected".to_string();
-    }
-}
-
 fn update_point_counter_text(
     point_query: Query<(), With<Point>>,
     mut text_query: Query<&mut Text, With<PointCounterText>>,
 ) {
     let mut text = text_query.single_mut();
     let count = point_query.iter().len();
-    text.sections[0].value = format!("Points: {count}");
+    text.sections[0].value = format!("Points {count}");
 }
 
 fn update_line_counter_text(
@@ -221,7 +145,7 @@ fn update_line_counter_text(
 ) {
     let mut text = text_query.single_mut();
     let count = line_query.iter().len();
-    text.sections[0].value = format!("Lines: {count}");
+    text.sections[0].value = format!("Lines {count}");
 }
 
 fn update_undo_counter_text(
@@ -230,7 +154,7 @@ fn update_undo_counter_text(
 ) {
     let mut text = text_query.single_mut();
     let count = undo_actions.len();
-    text.sections[0].value = format!("Undo: {count}");
+    text.sections[0].value = format!("Undo {count}");
 }
 
 fn update_redo_counter_text(
@@ -239,14 +163,14 @@ fn update_redo_counter_text(
 ) {
     let mut text = text_query.single_mut();
     let count = redo_actions.len();
-    text.sections[0].value = format!("Redo: {count}");
+    text.sections[0].value = format!("Redo {count}");
 }
 
 fn update_uncommitted_counter_text(
-    uncommitted_action: Res<UncommitedAction>,
+    uncommitted_commands: Res<UncommittedCommands>,
     mut text_query: Query<&mut Text, With<UncommittedCounterText>>,
 ) {
     let mut text = text_query.single_mut();
-    let count = uncommitted_action.len();
-    text.sections[0].value = format!("Uncommitted: {count}");
+    let count = uncommitted_commands.len();
+    text.sections[0].value = format!("Uncommitted {count}");
 }

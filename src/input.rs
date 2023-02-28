@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     plan::{
         point::{Point, POINT_RADIUS},
-        PlanMode,
+        PlanMode, PointMode,
     },
     AppSet,
 };
@@ -95,18 +95,18 @@ fn update_hover(
     let Some(cursor_position) = cursor.position else {
         return;
     };
-    let tracked_entity = match *mode {
-        PlanMode::Track(entity) => Some(entity),
+    let tracked_point_entity = match *mode {
+        PlanMode::Point(point_entity, PointMode::Track(_)) => Some(point_entity),
         _ => None,
     };
     hover.point = query
         .iter()
         // don't hover the tracked point
-        .filter(|(entity, _)| Some(*entity) != tracked_entity)
+        .filter(|(point_entity, _)| Some(*point_entity) != tracked_point_entity)
         // calculate distances from cursor
-        .map(|(entity, transform)| {
+        .map(|(point_entity, transform)| {
             let position = transform.translation.truncate();
-            (entity, Vec2::distance(position, cursor_position))
+            (point_entity, Vec2::distance(position, cursor_position))
         })
         // filter minimum distance from cursor
         .filter(|(_, distance)| *distance <= 2.0 * POINT_RADIUS)
@@ -116,5 +116,5 @@ fn update_hover(
                 .partial_cmp(distance_b)
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
-        .map(|(entity, _)| entity);
+        .map(|(point_entity, _)| point_entity);
 }

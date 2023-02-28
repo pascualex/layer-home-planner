@@ -10,7 +10,7 @@ mod ui;
 
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 
-use self::{
+use crate::{
     binding::BindingPlugin, command::CommandPlugin, consolidation::ConsolidationPlugin,
     input::InputPlugin, plan::PlanPlugin, ui::UiPlugin,
 };
@@ -21,7 +21,7 @@ const VIEWPORT_SIZE: f32 = 10.0;
 pub enum AppSet {
     Input,
     Binding,
-    Action,
+    Command,
     Consolidation,
     Ui,
 }
@@ -34,7 +34,7 @@ impl Plugin for AppPlugin {
             (
                 AppSet::Input,
                 AppSet::Binding,
-                AppSet::Action,
+                AppSet::Command,
                 AppSet::Consolidation,
                 AppSet::Ui,
             )

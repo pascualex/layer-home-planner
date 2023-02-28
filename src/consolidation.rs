@@ -8,7 +8,7 @@ use crate::{
             Point, PointAssets, HOVERED_POINT_PRIORITY, SELECTED_POINT_PRIORITY,
             STANDARD_POINT_PRIORITY,
         },
-        PlanMode,
+        PlanMode, PointMode,
     },
     AppSet,
 };
@@ -29,12 +29,12 @@ impl Plugin for ConsolidationPlugin {
 }
 
 fn track_cursor_with_selection(
-    mode: Res<PlanMode>,
+    plan_mode: Res<PlanMode>,
     cursor: Res<Cursor>,
     mut query: Query<&mut Transform, With<Point>>,
 ) {
-    if let PlanMode::Track(entity) = *mode {
-        let mut transform = query.get_mut(entity).unwrap();
+    if let PlanMode::Point(selected_point_entity, PointMode::Track(_)) = *plan_mode {
+        let mut transform = query.get_mut(selected_point_entity).unwrap();
         if let Some(position) = cursor.track_position() {
             transform.translation.x = position.x;
             transform.translation.y = position.y;
@@ -43,13 +43,13 @@ fn track_cursor_with_selection(
 }
 
 fn highlight_points(
-    mode: Res<PlanMode>,
+    plan_mode: Res<PlanMode>,
     hover: Res<Hover>,
     mut query: Query<(Entity, &mut Transform, &mut Handle<ColorMaterial>), With<Point>>,
     assets: Res<PointAssets>,
 ) {
     for (entity, mut transform, mut material) in &mut query {
-        let (mode_material, mode_priority) = if Some(entity) == mode.selection() {
+        let (mode_material, mode_priority) = if Some(entity) == plan_mode.point() {
             (&assets.selected_material, SELECTED_POINT_PRIORITY)
         } else if Some(entity) == hover.point {
             (&assets.hovered_material, HOVERED_POINT_PRIORITY)

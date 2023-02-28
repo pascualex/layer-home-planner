@@ -66,7 +66,7 @@ impl PointBundle {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug)]
 pub struct PointBlueprint {
     position: Vec2,
 }
