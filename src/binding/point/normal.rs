@@ -4,7 +4,7 @@ use crate::{
     binding::{Binding, BindingHits},
     command::{
         line::CreateLine,
-        plan_mode::{SelectPoint, TrackPoint, Unselect},
+        plan_mode::{SelectLine, SelectPoint, TrackPoint, Unselect},
         point::{CreatePoint, DeletePoint},
         system_command::{AddSystemCommand, RegisterSystemCommand},
     },
@@ -12,16 +12,16 @@ use crate::{
     plan::{line::LineBlueprint, point::PointBlueprint, Element, TrackMode},
 };
 
-pub struct SelectBindingsPlugin;
+pub struct NormalPointBindingPlugin;
 
-impl Plugin for SelectBindingsPlugin {
+impl Plugin for NormalPointBindingPlugin {
     fn build(&self, app: &mut App) {
         app.register_system_command(custom_extend)
             .register_system_command(custom_delete);
     }
 }
 
-pub struct SelectBindings {
+pub struct NormalPointBindings {
     select: Binding,
     track: Binding,
     extend: Binding,
@@ -29,12 +29,18 @@ pub struct SelectBindings {
     unselect: Binding,
 }
 
-impl SelectBindings {
+impl NormalPointBindings {
     pub fn get_hits(&self, selected_point: Entity, hover: &Hover, hits: &mut BindingHits) {
-        if let Element::Point(hovered_point) = **hover {
-            hits.no_commit("Select", self.select, SelectPoint(hovered_point));
-        } else {
-            hits.no_commit("Unselect", self.select, Unselect);
+        match **hover {
+            Element::Point(hovered_point) => {
+                hits.no_commit("Select", self.select, SelectPoint(hovered_point));
+            }
+            Element::Line(hovered_line) => {
+                hits.no_commit("Select", self.select, SelectLine(hovered_line));
+            }
+            Element::None => {
+                hits.no_commit("Unselect", self.select, Unselect);
+            }
         }
         hits.no_commit(
             "Move",
@@ -47,7 +53,7 @@ impl SelectBindings {
     }
 }
 
-impl Default for SelectBindings {
+impl Default for NormalPointBindings {
     fn default() -> Self {
         Self {
             select: Binding::Mouse(MouseButton::Left),

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     binding::{Binding, BindingHits},
     command::{
-        plan_mode::{SelectPoint, TrackPoint},
+        plan_mode::{SelectLine, SelectPoint, TrackPoint},
         point::CreatePoint,
         system_command::{AddSystemCommand, RegisterSystemCommand},
     },
@@ -11,9 +11,9 @@ use crate::{
     plan::{point::PointBlueprint, Element, TrackMode},
 };
 
-pub struct NormalBindingsPlugin;
+pub struct NormalBindingPlugin;
 
-impl Plugin for NormalBindingsPlugin {
+impl Plugin for NormalBindingPlugin {
     fn build(&self, app: &mut App) {
         app.register_system_command(custom_create);
     }
@@ -26,8 +26,14 @@ pub struct NormalBindings {
 
 impl NormalBindings {
     pub fn get_hits(&self, hover: &Hover, hits: &mut BindingHits) {
-        if let Element::Point(hovered_point) = **hover {
-            hits.no_commit("Select", self.select, SelectPoint(hovered_point));
+        match **hover {
+            Element::Point(hovered_point) => {
+                hits.no_commit("Select", self.select, SelectPoint(hovered_point));
+            }
+            Element::Line(hovered_line) => {
+                hits.no_commit("Select", self.select, SelectLine(hovered_line));
+            }
+            Element::None => (),
         }
         hits.no_commit("Create", self.create, CustomCreate);
     }

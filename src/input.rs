@@ -89,13 +89,13 @@ fn update_hover(
     cursor: Res<Cursor>,
     point_query: Query<(Entity, &Transform), With<Point>>,
     line_query: Query<(Entity, &Line)>,
-    mode: Res<PlanMode>,
+    plan_mode: Res<PlanMode>,
     mut hover: ResMut<Hover>,
 ) {
     let Some(cursor_position) = cursor.position else {
         return;
     };
-    let tracked_point_entity = match *mode {
+    let tracked_point_entity = match *plan_mode {
         PlanMode::Point(point_entity, PointMode::Track(_)) => Some(point_entity),
         _ => None,
     };
@@ -119,6 +119,9 @@ fn update_hover(
         .map(|(point_entity, _)| point_entity);
     if let Some(hovered_point_entity) = hovered_point_entity {
         **hover = Element::Point(hovered_point_entity);
+        return;
+    }
+    if let PlanMode::Point(_, PointMode::Track(_)) = *plan_mode {
         return;
     }
     let hovered_line_entity = line_query

@@ -1,6 +1,6 @@
+mod line;
 mod normal;
-mod select;
-mod track;
+mod point;
 
 use std::fmt::Debug;
 
@@ -8,16 +8,16 @@ use bevy::prelude::*;
 
 use crate::{
     binding::{
-        normal::{NormalBindings, NormalBindingsPlugin},
-        select::{SelectBindings, SelectBindingsPlugin},
-        track::{TrackBindings, TrackBindingsPlugin},
+        line::{LineBindingPlugin, LineBindings},
+        normal::{NormalBindingPlugin, NormalBindings},
+        point::{PointBindingPlugin, PointBindings},
     },
     command::{
         action::{AddToCommands, CommitAsUndo, Redo, RedoActions, Undo, UndoActions},
         system_command::AddSystemCommand,
     },
     input::Hover,
-    plan::{PlanMode, PointMode},
+    plan::PlanMode,
     AppSet,
 };
 
@@ -25,9 +25,9 @@ pub struct BindingPlugin;
 
 impl Plugin for BindingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(NormalBindingsPlugin)
-            .add_plugin(SelectBindingsPlugin)
-            .add_plugin(TrackBindingsPlugin)
+        app.add_plugin(NormalBindingPlugin)
+            .add_plugin(PointBindingPlugin)
+            .add_plugin(LineBindingPlugin)
             .init_resource::<Bindings>()
             .add_system(get_binding_hits.pipe(bind).in_set(AppSet::Binding));
     }
@@ -36,8 +36,8 @@ impl Plugin for BindingPlugin {
 #[derive(Resource)]
 pub struct Bindings {
     normal: NormalBindings,
-    select: SelectBindings,
-    track: TrackBindings,
+    point: PointBindings,
+    line: LineBindings,
     undo: Binding,
     redo: Binding,
 }
@@ -52,15 +52,15 @@ impl Bindings {
         hits: &mut BindingHits,
     ) {
         match plan_mode {
-            PlanMode::Normal => self.normal.get_hits(hover, hits),
-            PlanMode::Point(selected_point, point_mode) => match point_mode {
-                PointMode::Normal => self.select.get_hits(selected_point, hover, hits),
-                PointMode::Track(cancel_point) => {
-                    self.track
-                        .get_hits(selected_point, cancel_point, hover, hits)
-                }
-            },
-            _ => (),
+            PlanMode::Normal => {
+                self.normal.get_hits(hover, hits);
+            }
+            PlanMode::Point(selected_point, point_mode) => {
+                self.point.get_hits(selected_point, point_mode, hover, hits);
+            }
+            PlanMode::Line(selected_line) => {
+                self.line.get_hits(selected_line, hover, hits);
+            }
         }
         if can_undo {
             hits.no_commit("Undo", self.undo, Undo);
@@ -75,8 +75,8 @@ impl Default for Bindings {
     fn default() -> Self {
         Self {
             normal: NormalBindings::default(),
-            select: SelectBindings::default(),
-            track: TrackBindings::default(),
+            point: PointBindings::default(),
+            line: LineBindings::default(),
             undo: Binding::Keyboard(KeyCode::U),
             redo: Binding::Keyboard(KeyCode::R),
         }

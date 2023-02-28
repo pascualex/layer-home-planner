@@ -12,21 +12,21 @@ use crate::{
     plan::{Element, TrackMode},
 };
 
-pub struct TrackBindingsPlugin;
+pub struct TrackPointBindingPlugin;
 
-impl Plugin for TrackBindingsPlugin {
+impl Plugin for TrackPointBindingPlugin {
     fn build(&self, app: &mut App) {
         app.register_system_command(custom_merge)
             .register_system_command(custom_cancel);
     }
 }
 
-pub struct TrackBindings {
+pub struct TrackPointBindings {
     place: Binding,
     cancel: Binding,
 }
 
-impl TrackBindings {
+impl TrackPointBindings {
     pub fn get_hits(
         &self,
         tracked_point: Entity,
@@ -51,7 +51,7 @@ impl TrackBindings {
     }
 }
 
-impl Default for TrackBindings {
+impl Default for TrackPointBindings {
     fn default() -> Self {
         Self {
             place: Binding::Mouse(MouseButton::Left),

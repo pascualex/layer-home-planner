@@ -15,6 +15,7 @@ impl Plugin for PlanModeCommandPlugin {
             // atomic commands
             .register_system_command(select_point)
             .register_system_command(track_point)
+            .register_system_command(select_line)
             .register_system_command(unselect)
             .register_system_command(change_selection);
     }
@@ -49,9 +50,18 @@ fn track_point(
 }
 
 #[derive(Debug)]
+pub struct SelectLine(pub Entity);
+
+fn select_line(In(SelectLine(line)): In<SelectLine>, mut plan_mode: ResMut<PlanMode>) {
+    // apply
+    *plan_mode = PlanMode::Line(line);
+}
+
+#[derive(Debug)]
 pub struct Unselect;
 
 fn unselect(In(Unselect): In<Unselect>, mut plan_mode: ResMut<PlanMode>) {
+    // apply
     *plan_mode = PlanMode::Normal;
 }
 
@@ -62,6 +72,7 @@ fn change_selection(
     In(ChangeSelection(new_selection)): In<ChangeSelection>,
     mut plan_mode: ResMut<PlanMode>,
 ) {
+    // apply
     *plan_mode = match new_selection {
         Element::Point(point) => PlanMode::Point(point, PointMode::Normal),
         Element::Line(line) => PlanMode::Line(line),
