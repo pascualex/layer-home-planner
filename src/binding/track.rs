@@ -35,11 +35,19 @@ impl TrackBindings {
         hits: &mut BindingHits,
     ) {
         if let Some(hovered_point) = hover.point {
-            hits.commit(self.place, CustomMerge(tracked_point, hovered_point));
+            hits.commit(
+                "Merge",
+                self.place,
+                CustomMerge(tracked_point, hovered_point),
+            );
         } else {
-            hits.commit(self.place, SelectPoint(tracked_point));
+            hits.commit("Place", self.place, SelectPoint(tracked_point));
         }
-        hits.no_commit(self.cancel, CustomCancel(tracked_point, track_mode));
+        hits.no_commit(
+            "Cancel",
+            self.cancel,
+            CustomCancel(tracked_point, track_mode),
+        );
     }
 }
 

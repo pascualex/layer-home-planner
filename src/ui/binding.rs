@@ -77,7 +77,7 @@ fn update_bindings_panel(
     let mut commands_strings = Vec::new();
     let mut bindings_strings = Vec::new();
     for binding_hit in binding_hits.0 {
-        commands_strings.push("Command");
+        commands_strings.push(binding_hit.name);
         let binding_string = match binding_hit.binding {
             Binding::Mouse(mouse_button) => format!("{mouse_button:?}"),
             Binding::Keyboard(key_code) => format!("{key_code:?}"),

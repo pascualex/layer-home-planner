@@ -27,9 +27,9 @@ pub struct NormalBindings {
 impl NormalBindings {
     pub fn get_hits(&self, hover: &Hover, hits: &mut BindingHits) {
         if let Some(hovered_point) = hover.point {
-            hits.no_commit(self.select, SelectPoint(hovered_point));
+            hits.no_commit("Select", self.select, SelectPoint(hovered_point));
         }
-        hits.no_commit(self.create, CustomCreate);
+        hits.no_commit("Create", self.create, CustomCreate);
     }
 }
 

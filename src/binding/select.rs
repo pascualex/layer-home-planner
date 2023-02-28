@@ -32,14 +32,18 @@ pub struct SelectBindings {
 impl SelectBindings {
     pub fn get_hits(&self, selected_point: Entity, hover: &Hover, hits: &mut BindingHits) {
         if let Some(hovered_point) = hover.point {
-            hits.no_commit(self.select, SelectPoint(hovered_point));
+            hits.no_commit("Select", self.select, SelectPoint(hovered_point));
         } else {
-            hits.no_commit(self.select, Unselect);
+            hits.no_commit("Unselect", self.select, Unselect);
         }
-        hits.no_commit(self.track, TrackPoint(selected_point, TrackMode::Move));
-        hits.no_commit(self.extend, CustomExtend(selected_point));
-        hits.commit(self.delete, CustomDelete(selected_point));
-        hits.no_commit(self.unselect, Unselect);
+        hits.no_commit(
+            "Move",
+            self.track,
+            TrackPoint(selected_point, TrackMode::Move),
+        );
+        hits.no_commit("Extend", self.extend, CustomExtend(selected_point));
+        hits.commit("Delete", self.delete, CustomDelete(selected_point));
+        hits.no_commit("Unselect", self.unselect, Unselect);
     }
 }
 

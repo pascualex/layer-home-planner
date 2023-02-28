@@ -62,10 +62,10 @@ impl Bindings {
             },
         }
         if can_undo {
-            hits.no_commit(self.undo, Undo);
+            hits.no_commit("Undo", self.undo, Undo);
         }
         if can_redo {
-            hits.no_commit(self.redo, Redo);
+            hits.no_commit("Redo", self.redo, Redo);
         }
     }
 }
@@ -92,16 +92,28 @@ pub enum Binding {
 pub struct BindingHits(pub Vec<BindingHit>);
 
 impl BindingHits {
-    fn commit<T: 'static + Send + Debug>(&mut self, binding: Binding, command: T) {
+    fn commit<T: 'static + Send + Debug>(
+        &mut self,
+        name: &'static str,
+        binding: Binding,
+        command: T,
+    ) {
         self.push(BindingHit {
+            name,
             binding,
             command: Box::new(command),
             should_commit: true,
         });
     }
 
-    fn no_commit<T: 'static + Send + Debug>(&mut self, binding: Binding, command: T) {
+    fn no_commit<T: 'static + Send + Debug>(
+        &mut self,
+        name: &'static str,
+        binding: Binding,
+        command: T,
+    ) {
         self.push(BindingHit {
+            name,
             binding,
             command: Box::new(command),
             should_commit: false,
@@ -110,6 +122,7 @@ impl BindingHits {
 }
 
 pub struct BindingHit {
+    pub name: &'static str,
     pub binding: Binding,
     pub command: Box<dyn AddToCommands>,
     pub should_commit: bool,
