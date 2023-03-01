@@ -35,11 +35,37 @@ impl TrackPointBindings {
         hits: &mut BindingHits,
     ) {
         if let Element::Point(hovered_point) = **hover {
-            hits.commit(
-                "Merge",
-                self.place,
-                CustomMerge(tracked_point, hovered_point),
-            );
+            match track_mode {
+                TrackMode::Create => {
+                    hits.no_commit(
+                        "Cancel",
+                        self.place,
+                        CustomCancel(tracked_point, track_mode),
+                    );
+                }
+                TrackMode::Move => {
+                    hits.commit(
+                        "Merge",
+                        self.place,
+                        CustomMerge(tracked_point, hovered_point),
+                    );
+                }
+                TrackMode::Extend(extended_point) => {
+                    if hovered_point == extended_point {
+                        hits.no_commit(
+                            "Cancel",
+                            self.place,
+                            CustomCancel(tracked_point, track_mode),
+                        );
+                    } else {
+                        hits.commit(
+                            "Merge",
+                            self.place,
+                            CustomMerge(tracked_point, hovered_point),
+                        );
+                    }
+                }
+            }
         } else {
             hits.commit("Place", self.place, SelectPoint(tracked_point));
         }

@@ -122,6 +122,7 @@ fn update_hover(
         return;
     }
     if let PlanMode::Point(_, PointMode::Track(_)) = *plan_mode {
+        **hover = Element::None;
         return;
     }
     let hovered_line_entity = line_query

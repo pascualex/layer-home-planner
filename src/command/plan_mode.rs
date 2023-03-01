@@ -35,7 +35,7 @@ fn select_point(In(SelectPoint(point)): In<SelectPoint>, mut plan_mode: ResMut<P
 pub struct TrackPoint(pub Entity, pub TrackMode);
 
 fn track_point(
-    In(TrackPoint(point, old_selection)): In<TrackPoint>,
+    In(TrackPoint(point, track_mode)): In<TrackPoint>,
     mut plan_mode: ResMut<PlanMode>,
     point_query: Query<&Transform, With<Point>>,
     mut uncommitted_commands: ResMut<UncommittedCommands>,
@@ -44,9 +44,11 @@ fn track_point(
     let transform = point_query.get(point).unwrap();
     let old_position = transform.translation.truncate();
     // apply
-    *plan_mode = PlanMode::Point(point, PointMode::Track(old_selection));
+    *plan_mode = PlanMode::Point(point, PointMode::Track(track_mode));
     // add undo
-    uncommitted_commands.add(MovePoint(point, old_position));
+    if let TrackMode::Move = track_mode {
+        uncommitted_commands.add(MovePoint(point, old_position));
+    }
 }
 
 #[derive(Debug)]
