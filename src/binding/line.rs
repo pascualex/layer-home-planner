@@ -4,11 +4,11 @@ use crate::{
     binding::{Binding, BindingHits},
     command::{
         line::{DeleteLine, SplitLine},
-        plan_mode::{SelectLine, SelectPoint, Unselect},
+        plan_mode::{SelectLine, SelectPoint, TrackPoint, Unselect},
         system_command::{AddSystemCommand, RegisterSystemCommand},
     },
     input::Hover,
-    plan::Element,
+    plan::{Element, TrackMode},
 };
 
 pub struct LineBindingPlugin;
@@ -40,7 +40,7 @@ impl LineBindings {
                 hits.no_commit("Unselect", self.select, Unselect);
             }
         }
-        hits.commit("Split", self.split, CustomSplit(selected_line));
+        hits.no_commit("Split", self.split, CustomSplit(selected_line));
         hits.commit("Delete", self.delete, CustomDelete(selected_line));
         hits.no_commit("Unselect", self.unselect, Unselect);
     }
@@ -64,7 +64,7 @@ fn custom_split(In(CustomSplit(old_line)): In<CustomSplit>, mut commands: Comman
     commands.add_system_command(Unselect);
     let new_point = commands.spawn_empty().id();
     commands.add_system_command(SplitLine(old_line, new_point));
-    commands.add_system_command(SelectPoint(new_point));
+    commands.add_system_command(TrackPoint(new_point, TrackMode::Split(old_line)));
 }
 
 #[derive(Debug)]

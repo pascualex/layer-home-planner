@@ -57,6 +57,7 @@ pub enum TrackMode {
     Create,
     Move,
     Extend(Entity),
+    Split(Entity),
 }
 
 #[derive(Default, Clone, Copy, Debug)]

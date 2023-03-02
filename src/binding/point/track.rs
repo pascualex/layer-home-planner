@@ -4,7 +4,7 @@ use crate::{
     binding::{Binding, BindingHits},
     command::{
         action::UndoUncommitted,
-        plan_mode::{SelectPoint, Unselect},
+        plan_mode::{SelectLine, SelectPoint, Unselect},
         point::{DeletePoint, TransferPointLines},
         system_command::{AddSystemCommand, RegisterSystemCommand},
     },
@@ -43,7 +43,7 @@ impl TrackPointBindings {
                         CustomCancel(tracked_point, track_mode),
                     );
                 }
-                TrackMode::Move => {
+                TrackMode::Move | TrackMode::Split(_) => {
                     hits.commit(
                         "Merge",
                         self.place,
@@ -104,8 +104,17 @@ fn custom_cancel(
 ) {
     commands.add_system_command(UndoUncommitted);
     match track_mode {
-        TrackMode::Create => commands.add_system_command(Unselect),
-        TrackMode::Move => commands.add_system_command(SelectPoint(tracked_point)),
-        TrackMode::Extend(old_point) => commands.add_system_command(SelectPoint(old_point)),
+        TrackMode::Create => {
+            commands.add_system_command(Unselect);
+        }
+        TrackMode::Move => {
+            commands.add_system_command(SelectPoint(tracked_point));
+        }
+        TrackMode::Extend(old_point) => {
+            commands.add_system_command(SelectPoint(old_point));
+        }
+        TrackMode::Split(old_line) => {
+            commands.add_system_command(SelectLine(old_line));
+        }
     }
 }
