@@ -1,4 +1,7 @@
-use std::{fmt::Debug, mem::take};
+use std::{
+    fmt::Debug,
+    mem::{replace, take},
+};
 
 use bevy::prelude::*;
 
@@ -17,12 +20,14 @@ impl Plugin for ActionPlugin {
         app.init_resource::<UndoActions>()
             .init_resource::<RedoActions>()
             .init_resource::<UncommittedCommands>()
+            .init_resource::<UncommittedSelection>()
             .register_system_command(undo)
             .register_system_command(redo)
             .register_system_command(undo_uncommitted)
+            .register_system_command(discard_redo)
             .register_system_command(discard_uncommitted)
+            .register_system_command(commit)
             .register_system_command(commit_as_undo)
-            .register_system_command(commit_as_undo_from_redo)
             .register_system_command(commit_as_redo);
     }
 }
@@ -36,14 +41,20 @@ pub struct RedoActions(Vec<Action>);
 #[derive(Debug)]
 pub struct Action {
     commands: Vec<Box<dyn AddToCommands + Send + Sync>>,
-    selection: Element,
+    old_selection: Element,
+    new_selection: Element,
 }
 
 impl Action {
-    pub fn new(commands: Vec<Box<dyn AddToCommands + Send + Sync>>, selection: Element) -> Self {
+    pub fn new(
+        commands: Vec<Box<dyn AddToCommands + Send + Sync>>,
+        old_selection: Element,
+        new_selection: Element,
+    ) -> Self {
         Self {
             commands,
-            selection,
+            old_selection,
+            new_selection,
         }
     }
 }
@@ -60,22 +71,21 @@ impl UncommittedCommands {
     }
 }
 
+#[derive(Resource, Default, Deref, DerefMut)]
+pub struct UncommittedSelection(Element);
+
 #[derive(Debug)]
 pub struct Undo;
 
 fn undo(In(Undo): In<Undo>, mut undo_actions: ResMut<UndoActions>, mut commands: Commands) {
-    commands.add_system_command(UndoUncommitted);
     if let Some(mut action) = undo_actions.pop() {
+        commands.add_system_command(UndoUncommitted);
         while let Some(command) = action.commands.pop() {
             command.add_to(&mut commands);
         }
-        commands.add_system_command(CommitAsRedo(action.selection));
+        commands.add_system_command(CommitAsRedo(action.old_selection, action.new_selection));
+        commands.add_system_command(ChangeSelection(action.old_selection));
     }
-    let new_selection = match undo_actions.last() {
-        Some(action) => action.selection,
-        None => Element::None,
-    };
-    commands.add_system_command(ChangeSelection(new_selection));
 }
 
 #[derive(Debug)]
@@ -87,8 +97,8 @@ fn redo(In(Redo): In<Redo>, mut redo_actions: ResMut<RedoActions>, mut commands:
         while let Some(command) = action.commands.pop() {
             command.add_to(&mut commands);
         }
-        commands.add_system_command(CommitAsUndoFromRedo(action.selection));
-        commands.add_system_command(ChangeSelection(action.selection));
+        commands.add_system_command(CommitAsUndo(action.old_selection, action.new_selection));
+        commands.add_system_command(ChangeSelection(action.new_selection));
     }
 }
 
@@ -107,64 +117,59 @@ fn undo_uncommitted(
 }
 
 #[derive(Debug)]
+struct DiscardRedo;
+
+fn discard_redo(In(DiscardRedo): In<DiscardRedo>, mut redo_actions: ResMut<RedoActions>) {
+    redo_actions.clear();
+}
+
+#[derive(Debug)]
 struct DiscardUncommitted;
 
 fn discard_uncommitted(
     In(DiscardUncommitted): In<DiscardUncommitted>,
     mut uncommitted_commands: ResMut<UncommittedCommands>,
-    undo_actions: Res<UndoActions>,
-    mut commands: Commands,
 ) {
     uncommitted_commands.clear();
-    let new_selection = match undo_actions.last() {
-        Some(action) => action.selection,
-        None => Element::None,
-    };
-    commands.add_system_command(ChangeSelection(new_selection));
 }
 
 #[derive(Debug)]
-pub struct CommitAsUndo;
+pub struct Commit;
+
+fn commit(
+    In(Commit): In<Commit>,
+    mut uncommitted_selection: ResMut<UncommittedSelection>,
+    plan_mode: Res<PlanMode>,
+    mut commands: Commands,
+) {
+    let new_selection = plan_mode.selection();
+    let old_selection = replace(&mut **uncommitted_selection, new_selection);
+    commands.add_system_command(CommitAsUndo(old_selection, new_selection));
+    commands.add_system_command(DiscardRedo);
+}
+
+#[derive(Debug)]
+struct CommitAsUndo(Element, Element);
 
 fn commit_as_undo(
-    In(CommitAsUndo): In<CommitAsUndo>,
-    mut uncommitted_commands: ResMut<UncommittedCommands>,
-    plan_mode: Res<PlanMode>,
-    mut undo_actions: ResMut<UndoActions>,
-    mut redo_actions: ResMut<RedoActions>,
-) {
-    let commands = take(&mut **uncommitted_commands);
-    let selection = match *plan_mode {
-        PlanMode::Normal => Element::None,
-        PlanMode::Point(point, _) => Element::Point(point),
-        PlanMode::Line(line) => Element::Line(line),
-    };
-    undo_actions.push(Action::new(commands, selection));
-    redo_actions.clear();
-}
-
-#[derive(Debug)]
-struct CommitAsUndoFromRedo(Element);
-
-fn commit_as_undo_from_redo(
-    In(CommitAsUndoFromRedo(selection)): In<CommitAsUndoFromRedo>,
+    In(CommitAsUndo(old_selection, new_selection)): In<CommitAsUndo>,
     mut uncommitted_commands: ResMut<UncommittedCommands>,
     mut undo_actions: ResMut<UndoActions>,
 ) {
     let commands = take(&mut **uncommitted_commands);
-    undo_actions.push(Action::new(commands, selection));
+    undo_actions.push(Action::new(commands, old_selection, new_selection));
 }
 
 #[derive(Debug)]
-struct CommitAsRedo(Element);
+struct CommitAsRedo(Element, Element);
 
 fn commit_as_redo(
-    In(CommitAsRedo(selection)): In<CommitAsRedo>,
+    In(CommitAsRedo(old_selection, new_selection)): In<CommitAsRedo>,
     mut uncommitted_commands: ResMut<UncommittedCommands>,
     mut redo_actions: ResMut<RedoActions>,
 ) {
     let commands = take(&mut **uncommitted_commands);
-    redo_actions.push(Action::new(commands, selection));
+    redo_actions.push(Action::new(commands, old_selection, new_selection));
 }
 
 pub trait AddToCommands: Debug {

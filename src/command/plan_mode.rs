@@ -2,7 +2,9 @@ use bevy::prelude::*;
 
 use crate::{
     command::{
-        action::UncommittedCommands, point::MovePoint, system_command::RegisterSystemCommand,
+        action::{UncommittedCommands, UncommittedSelection},
+        point::MovePoint,
+        system_command::RegisterSystemCommand,
     },
     plan::{point::Point, Element, PlanMode, PointMode, TrackMode},
 };
@@ -39,16 +41,19 @@ fn track_point(
     mut plan_mode: ResMut<PlanMode>,
     point_query: Query<&Transform, With<Point>>,
     mut uncommitted_commands: ResMut<UncommittedCommands>,
+    mut uncommitted_selection: ResMut<UncommittedSelection>,
 ) {
     // get state
     let transform = point_query.get(point).unwrap();
     let old_position = transform.translation.truncate();
+    let old_selection = plan_mode.selection();
     // apply
     *plan_mode = PlanMode::Point(point, PointMode::Track(track_mode));
     // add undo
     if let TrackMode::Move = track_mode {
         uncommitted_commands.add(MovePoint(point, old_position));
     }
+    **uncommitted_selection = old_selection;
 }
 
 #[derive(Debug)]
@@ -73,6 +78,7 @@ pub struct ChangeSelection(pub Element);
 fn change_selection(
     In(ChangeSelection(new_selection)): In<ChangeSelection>,
     mut plan_mode: ResMut<PlanMode>,
+    mut uncommitted_selection: ResMut<UncommittedSelection>,
 ) {
     // apply
     *plan_mode = match new_selection {
@@ -80,4 +86,5 @@ fn change_selection(
         Element::Line(line) => PlanMode::Line(line),
         Element::None => PlanMode::Normal,
     };
+    **uncommitted_selection = new_selection;
 }

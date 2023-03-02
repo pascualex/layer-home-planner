@@ -13,7 +13,7 @@ use crate::{
         point::{PointBindingPlugin, PointBindings},
     },
     command::{
-        action::{AddToCommands, CommitAsUndo, Redo, RedoActions, Undo, UndoActions},
+        action::{AddToCommands, Commit, Redo, RedoActions, Undo, UndoActions},
         system_command::AddSystemCommand,
     },
     input::Hover,
@@ -163,7 +163,7 @@ fn bind(
     if let Some(binded_hit) = binded_hit {
         binded_hit.command.add_to(&mut commands);
         if binded_hit.should_commit {
-            commands.add_system_command(CommitAsUndo);
+            commands.add_system_command(Commit);
         }
     }
 }

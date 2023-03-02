@@ -31,16 +31,24 @@ pub enum PlanMode {
 }
 
 impl PlanMode {
-    pub fn point(&self) -> Option<Entity> {
+    pub fn selection(self) -> Element {
         match self {
-            PlanMode::Point(point, _) => Some(*point),
+            PlanMode::Normal => Element::None,
+            PlanMode::Point(point, _) => Element::Point(point),
+            PlanMode::Line(line) => Element::Line(line),
+        }
+    }
+
+    pub fn point(self) -> Option<Entity> {
+        match self {
+            PlanMode::Point(point, _) => Some(point),
             _ => None,
         }
     }
 
-    pub fn line(&self) -> Option<Entity> {
+    pub fn line(self) -> Option<Entity> {
         match self {
-            PlanMode::Line(line) => Some(*line),
+            PlanMode::Line(line) => Some(line),
             _ => None,
         }
     }
