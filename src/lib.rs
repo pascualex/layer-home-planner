@@ -2,17 +2,17 @@
 
 mod binding;
 mod command;
-mod consolidation;
 mod input;
 mod palette;
 mod plan;
 mod ui;
+mod visuals;
 
 use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::ScalingMode};
 
 use crate::{
-    binding::BindingPlugin, command::CommandPlugin, consolidation::ConsolidationPlugin,
-    input::InputPlugin, plan::PlanPlugin, ui::UiPlugin,
+    binding::BindingPlugin, command::CommandPlugin, input::InputPlugin, plan::PlanPlugin,
+    ui::UiPlugin, visuals::VisualsPlugin,
 };
 
 const VIEWPORT_SIZE: f32 = 10.0;
@@ -20,9 +20,8 @@ const VIEWPORT_SIZE: f32 = 10.0;
 #[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum AppSet {
     Input,
-    Binding,
     Command,
-    Consolidation,
+    Visuals,
     Ui,
 }
 
@@ -30,23 +29,14 @@ pub struct AppPlugin;
 
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(
-            (
-                AppSet::Input,
-                AppSet::Binding,
-                AppSet::Command,
-                AppSet::Consolidation,
-                AppSet::Ui,
-            )
-                .chain(),
-        )
-        .add_plugin(PlanPlugin)
-        .add_plugin(InputPlugin)
-        .add_plugin(BindingPlugin)
-        .add_plugin(CommandPlugin)
-        .add_plugin(ConsolidationPlugin)
-        .add_plugin(UiPlugin)
-        .add_startup_system(setup);
+        app.configure_sets((AppSet::Input, AppSet::Command, AppSet::Visuals, AppSet::Ui).chain())
+            .add_plugin(PlanPlugin)
+            .add_plugin(InputPlugin)
+            .add_plugin(BindingPlugin)
+            .add_plugin(CommandPlugin)
+            .add_plugin(VisualsPlugin)
+            .add_plugin(UiPlugin)
+            .add_startup_system(setup);
     }
 }
 

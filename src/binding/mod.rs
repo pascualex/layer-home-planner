@@ -12,13 +12,9 @@ use crate::{
         normal::{NormalBindingPlugin, NormalBindings},
         point::{PointBindingPlugin, PointBindings},
     },
-    command::{
-        action::{AddToCommands, Commit, Redo, RedoActions, Undo, UndoActions},
-        system_command::AddSystemCommand,
-    },
+    command::action::{AddToCommands, Redo, RedoActions, Undo, UndoActions},
     input::Hover,
     plan::PlanMode,
-    AppSet,
 };
 
 pub struct BindingPlugin;
@@ -28,8 +24,7 @@ impl Plugin for BindingPlugin {
         app.add_plugin(NormalBindingPlugin)
             .add_plugin(PointBindingPlugin)
             .add_plugin(LineBindingPlugin)
-            .init_resource::<Bindings>()
-            .add_system(get_binding_hits.pipe(bind).in_set(AppSet::Binding));
+            .init_resource::<Bindings>();
     }
 }
 
@@ -43,30 +38,30 @@ pub struct Bindings {
 }
 
 impl Bindings {
-    fn get_hits(
+    fn bind(
         &self,
         plan_mode: PlanMode,
         hover: &Hover,
         can_undo: bool,
         can_redo: bool,
-        hits: &mut BindingHits,
+        commands: &mut BindedCommands,
     ) {
         match plan_mode {
             PlanMode::Normal => {
-                self.normal.get_hits(hover, hits);
+                self.normal.bind(hover, commands);
             }
             PlanMode::Point(selected_point, point_mode) => {
-                self.point.get_hits(selected_point, point_mode, hover, hits);
+                self.point.bind(selected_point, point_mode, hover, commands);
             }
             PlanMode::Line(selected_line) => {
-                self.line.get_hits(selected_line, hover, hits);
+                self.line.bind(selected_line, hover, commands);
             }
         }
         if can_undo {
-            hits.no_commit("Undo", self.undo, Undo);
+            commands.no_commit("Undo", self.undo, Undo);
         }
         if can_redo {
-            hits.no_commit("Redo", self.redo, Redo);
+            commands.no_commit("Redo", self.redo, Redo);
         }
     }
 }
@@ -90,16 +85,16 @@ pub enum Binding {
 }
 
 #[derive(Default, Deref, DerefMut)]
-pub struct BindingHits(pub Vec<BindingHit>);
+pub struct BindedCommands(pub Vec<BindedCommand>);
 
-impl BindingHits {
+impl BindedCommands {
     fn commit<T: 'static + Send + Debug>(
         &mut self,
         name: &'static str,
         binding: Binding,
         command: T,
     ) {
-        self.push(BindingHit {
+        self.push(BindedCommand {
             name,
             binding,
             command: Box::new(command),
@@ -113,7 +108,7 @@ impl BindingHits {
         binding: Binding,
         command: T,
     ) {
-        self.push(BindingHit {
+        self.push(BindedCommand {
             name,
             binding,
             command: Box::new(command),
@@ -122,22 +117,22 @@ impl BindingHits {
     }
 }
 
-pub struct BindingHit {
+pub struct BindedCommand {
     pub name: &'static str,
     pub binding: Binding,
     pub command: Box<dyn AddToCommands>,
     pub should_commit: bool,
 }
 
-pub fn get_binding_hits(
+pub fn bind(
     bindings: Res<Bindings>,
     plan_mode: Res<PlanMode>,
     hover: Res<Hover>,
     undo_actions: Res<UndoActions>,
     redo_actions: Res<RedoActions>,
-) -> BindingHits {
-    let mut binding_hits = BindingHits::default();
-    bindings.get_hits(
+) -> BindedCommands {
+    let mut binding_hits = BindedCommands::default();
+    bindings.bind(
         *plan_mode,
         &hover,
         !undo_actions.is_empty(),
@@ -145,25 +140,4 @@ pub fn get_binding_hits(
         &mut binding_hits,
     );
     binding_hits
-}
-
-fn bind(
-    In(binding_hits): In<BindingHits>,
-    mouse_input: Res<Input<MouseButton>>,
-    keyboard_input: Res<Input<KeyCode>>,
-    mut commands: Commands,
-) {
-    let binded_hit = binding_hits
-        .0
-        .into_iter()
-        .find(|binding_hit| match binding_hit.binding {
-            Binding::Mouse(mouse_button) => mouse_input.just_pressed(mouse_button),
-            Binding::Keyboard(key_code) => keyboard_input.just_pressed(key_code),
-        });
-    if let Some(binded_hit) = binded_hit {
-        binded_hit.command.add_to(&mut commands);
-        if binded_hit.should_commit {
-            commands.add_system_command(Commit);
-        }
-    }
 }

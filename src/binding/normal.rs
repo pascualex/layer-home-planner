@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    binding::{Binding, BindingHits},
+    binding::{BindedCommands, Binding},
     command::{
         plan_mode::{SelectLine, SelectPoint, TrackPoint},
         point::CreatePoint,
@@ -25,17 +25,17 @@ pub struct NormalBindings {
 }
 
 impl NormalBindings {
-    pub fn get_hits(&self, hover: &Hover, hits: &mut BindingHits) {
+    pub fn bind(&self, hover: &Hover, commands: &mut BindedCommands) {
         match **hover {
             Element::Point(hovered_point) => {
-                hits.no_commit("Select", self.select, SelectPoint(hovered_point));
+                commands.no_commit("Select", self.select, SelectPoint(hovered_point));
             }
             Element::Line(hovered_line) => {
-                hits.no_commit("Select", self.select, SelectLine(hovered_line));
+                commands.no_commit("Select", self.select, SelectLine(hovered_line));
             }
             Element::None => (),
         }
-        hits.no_commit("Create", self.create, CustomCreate);
+        commands.no_commit("Create", self.create, CustomCreate);
     }
 }
 

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    binding::{Binding, BindingHits},
+    binding::{BindedCommands, Binding},
     command::{
         line::CreateLine,
         plan_mode::{SelectLine, SelectPoint, TrackPoint, Unselect},
@@ -30,26 +30,26 @@ pub struct NormalPointBindings {
 }
 
 impl NormalPointBindings {
-    pub fn get_hits(&self, selected_point: Entity, hover: &Hover, hits: &mut BindingHits) {
+    pub fn bind(&self, selected_point: Entity, hover: &Hover, commands: &mut BindedCommands) {
         match **hover {
             Element::Point(hovered_point) => {
-                hits.no_commit("Select", self.select, SelectPoint(hovered_point));
+                commands.no_commit("Select", self.select, SelectPoint(hovered_point));
             }
             Element::Line(hovered_line) => {
-                hits.no_commit("Select", self.select, SelectLine(hovered_line));
+                commands.no_commit("Select", self.select, SelectLine(hovered_line));
             }
             Element::None => {
-                hits.no_commit("Unselect", self.select, Unselect);
+                commands.no_commit("Unselect", self.select, Unselect);
             }
         }
-        hits.no_commit(
+        commands.no_commit(
             "Move",
             self.track,
             TrackPoint(selected_point, TrackMode::Move),
         );
-        hits.no_commit("Extend", self.extend, CustomExtend(selected_point));
-        hits.commit("Delete", self.delete, CustomDelete(selected_point));
-        hits.no_commit("Unselect", self.unselect, Unselect);
+        commands.no_commit("Extend", self.extend, CustomExtend(selected_point));
+        commands.commit("Delete", self.delete, CustomDelete(selected_point));
+        commands.no_commit("Unselect", self.unselect, Unselect);
     }
 }
 

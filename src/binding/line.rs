@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    binding::{Binding, BindingHits},
+    binding::{BindedCommands, Binding},
     command::{
         line::{DeleteLine, SplitLine},
         plan_mode::{SelectLine, SelectPoint, TrackPoint, Unselect},
@@ -28,21 +28,21 @@ pub struct LineBindings {
 }
 
 impl LineBindings {
-    pub fn get_hits(&self, selected_line: Entity, hover: &Hover, hits: &mut BindingHits) {
+    pub fn bind(&self, selected_line: Entity, hover: &Hover, commands: &mut BindedCommands) {
         match **hover {
             Element::Point(hovered_point) => {
-                hits.no_commit("Select", self.select, SelectPoint(hovered_point));
+                commands.no_commit("Select", self.select, SelectPoint(hovered_point));
             }
             Element::Line(hovered_line) => {
-                hits.no_commit("Select", self.select, SelectLine(hovered_line));
+                commands.no_commit("Select", self.select, SelectLine(hovered_line));
             }
             Element::None => {
-                hits.no_commit("Unselect", self.select, Unselect);
+                commands.no_commit("Unselect", self.select, Unselect);
             }
         }
-        hits.no_commit("Split", self.split, CustomSplit(selected_line));
-        hits.commit("Delete", self.delete, CustomDelete(selected_line));
-        hits.no_commit("Unselect", self.unselect, Unselect);
+        commands.no_commit("Split", self.split, CustomSplit(selected_line));
+        commands.commit("Delete", self.delete, CustomDelete(selected_line));
+        commands.no_commit("Unselect", self.unselect, Unselect);
     }
 }
 

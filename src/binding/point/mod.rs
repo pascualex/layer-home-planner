@@ -9,7 +9,7 @@ use crate::{
             normal::{NormalPointBindingPlugin, NormalPointBindings},
             track::{TrackPointBindingPlugin, TrackPointBindings},
         },
-        BindingHits,
+        BindedCommands,
     },
     input::Hover,
     plan::PointMode,
@@ -31,18 +31,19 @@ pub struct PointBindings {
 }
 
 impl PointBindings {
-    pub fn get_hits(
+    pub fn bind(
         &self,
         selected_point: Entity,
         point_mode: PointMode,
         hover: &Hover,
-        hits: &mut BindingHits,
+        commands: &mut BindedCommands,
     ) {
         match point_mode {
-            PointMode::Normal => self.normal.get_hits(selected_point, hover, hits),
-            PointMode::Track(cancel_point) => {
-                self.track
-                    .get_hits(selected_point, cancel_point, hover, hits)
+            PointMode::Normal => {
+                self.normal.bind(selected_point, hover, commands);
+            }
+            PointMode::Track(track_mode) => {
+                self.track.bind(selected_point, track_mode, hover, commands);
             }
         }
     }

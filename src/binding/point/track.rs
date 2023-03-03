@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    binding::{Binding, BindingHits},
+    binding::{BindedCommands, Binding},
     command::{
         action::UndoUncommitted,
         plan_mode::{SelectLine, SelectPoint, Unselect},
@@ -27,24 +27,24 @@ pub struct TrackPointBindings {
 }
 
 impl TrackPointBindings {
-    pub fn get_hits(
+    pub fn bind(
         &self,
         tracked_point: Entity,
         track_mode: TrackMode,
         hover: &Hover,
-        hits: &mut BindingHits,
+        commands: &mut BindedCommands,
     ) {
         if let Element::Point(hovered_point) = **hover {
             match track_mode {
                 TrackMode::Create => {
-                    hits.no_commit(
+                    commands.no_commit(
                         "Cancel",
                         self.place,
                         CustomCancel(tracked_point, track_mode),
                     );
                 }
                 TrackMode::Move | TrackMode::Split(_) => {
-                    hits.commit(
+                    commands.commit(
                         "Merge",
                         self.place,
                         CustomMerge(tracked_point, hovered_point),
@@ -52,13 +52,13 @@ impl TrackPointBindings {
                 }
                 TrackMode::Extend(extended_point) => {
                     if hovered_point == extended_point {
-                        hits.no_commit(
+                        commands.no_commit(
                             "Cancel",
                             self.place,
                             CustomCancel(tracked_point, track_mode),
                         );
                     } else {
-                        hits.commit(
+                        commands.commit(
                             "Merge",
                             self.place,
                             CustomMerge(tracked_point, hovered_point),
@@ -67,9 +67,9 @@ impl TrackPointBindings {
                 }
             }
         } else {
-            hits.commit("Place", self.place, SelectPoint(tracked_point));
+            commands.commit("Place", self.place, SelectPoint(tracked_point));
         }
-        hits.no_commit(
+        commands.no_commit(
             "Cancel",
             self.cancel,
             CustomCancel(tracked_point, track_mode),

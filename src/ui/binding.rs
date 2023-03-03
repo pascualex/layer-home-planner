@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    binding::{get_binding_hits, Binding, BindingHits},
+    binding::{bind, BindedCommands, Binding},
     palette,
     ui::UiAssets,
     AppSet,
@@ -12,7 +12,7 @@ pub struct BindingUiPlugin;
 impl Plugin for BindingUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_bindings_panel)
-            .add_system((get_binding_hits.pipe(update_bindings_panel)).in_set(AppSet::Ui));
+            .add_system((bind.pipe(update_bindings_panel)).in_set(AppSet::Ui));
     }
 }
 
@@ -70,7 +70,7 @@ fn spawn_bindings_panel(assets: Res<UiAssets>, mut commands: Commands) {
 }
 
 fn update_bindings_panel(
-    In(binding_hits): In<BindingHits>,
+    In(binding_hits): In<BindedCommands>,
     mut commands_text_query: Query<&mut Text, With<CommandsText>>,
     mut bindings_text_query: Query<&mut Text, (With<BindingsText>, Without<CommandsText>)>,
 ) {

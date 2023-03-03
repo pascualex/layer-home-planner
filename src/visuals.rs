@@ -15,9 +15,9 @@ use crate::{
     AppSet,
 };
 
-pub struct ConsolidationPlugin;
+pub struct VisualsPlugin;
 
-impl Plugin for ConsolidationPlugin {
+impl Plugin for VisualsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
@@ -26,7 +26,7 @@ impl Plugin for ConsolidationPlugin {
                 track_cursor_with_selection,
                 update_lines.after(track_cursor_with_selection),
             )
-                .in_set(AppSet::Consolidation),
+                .in_set(AppSet::Visuals),
         );
     }
 }
